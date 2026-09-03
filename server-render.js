@@ -159,12 +159,18 @@ function requiereRol(...roles) {
 
 // ── RUTAS PROTEGIDAS ──────────────────────────────────────────────────
 const rutasProtegidas = [
-    '/usuarios', '/candidatos', '/candidatos/*', '/juntas', '/juntas/*',
-    '/admin', '/admin/*', '/registrar', '/registrar-resultados',
+    '/usuarios', '/candidatos', '/juntas',
+    '/admin', '/registrar', '/registrar-resultados',
     '/estadisticas', '/estadisticas-especiales', '/descargar-excel',
     '/descargar-fotos-actas', '/parroquias', '/zonas'
 ];
-app.use(rutasProtegidas, autenticarSesion);
+
+app.use((req, res, next) => {
+    if (rutasProtegidas.some(ruta => req.path.startsWith(ruta))) {
+        return autenticarSesion(req, res, next);
+    }
+    next();
+});
 
 // ── LOGIN ─────────────────────────────────────────────────────────────
 app.post('/login', loginLimiter, async (req, res) => {
