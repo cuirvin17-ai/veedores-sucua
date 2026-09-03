@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#10b981">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Veedores 2026">
+    <title>Acceso — Veedores Sucúa 2026</title>
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" href="../icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="../icon-192.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="acceso.css">
+    <style>body { visibility: hidden; }</style>
+</head>
+<body>
+
+<!-- Aviso sin conexión -->
+<div id="offline-msg" style="
+    display:none; position:fixed; top:0; left:0; right:0;
+    background:#dc2626; color:#fff; text-align:center;
+    padding:10px; font-weight:700; z-index:9999; font-size:0.88rem;">
+    ⚠️ Sin conexión — Modo Offline activo
+</div>
+
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-logo">
+            <img src="../icon-192.png" alt="Veedores Electorales Sucúa 2026" width="120" height="120">
+        </div>
+        <h1 class="login-title">Veedores Electorales</h1>
+        <p class="login-subtitle">Sucúa 2026 · Ingreso al sistema</p>
+
+        <form id="formLogin" autocomplete="off">
+            <div class="form-group">
+                <label><i class="fas fa-user"></i> Usuario</label>
+                <input type="text" id="usuario" placeholder="Ingrese su usuario"
+                       autocomplete="username" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-lock"></i> Contraseña</label>
+                <div class="input-pass">
+                    <input type="password" id="password" placeholder="Ingrese su clave"
+                           autocomplete="current-password" required>
+                    <button type="button" onclick="togglePass()" tabindex="-1">
+                        <i class="fas fa-eye" id="iconoOjo"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="mensajeError" class="msg-error" style="display:none;"></div>
+
+            <button type="submit" id="btnLogin" class="btn-login">
+                <i class="fas fa-arrow-right-to-bracket"></i> Ingresar
+            </button>
+        </form>
+
+        <button id="installBtn" style="display:none; margin-top:14px; width:100%;
+            padding:12px; border:2px solid #10b981; border-radius:14px;
+            background:transparent; color:#10b981; font-size:0.9rem;
+            font-weight:600; cursor:pointer;">
+            📲 Instalar App en este dispositivo
+        </button>
+
+        <p class="login-footer">Sistema de Veeduría Electoral · Municipio de Sucúa</p>
+    </div>
+</div>
+
+<script src="acceso.js"></script>
+<script>document.body.style.visibility = 'visible';</script>
+</body>
+</html>

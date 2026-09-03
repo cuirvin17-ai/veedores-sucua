@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control — Veedores Sucúa 2026</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+    (function() {
+        var id  = localStorage.getItem('idUsuario');
+        var rol = localStorage.getItem('rolUsuario');
+        if (!id || (rol !== 'admin' && rol !== 'superadmin'))
+            window.location.href = '../acceso/acceso.html';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (rol === 'superadmin') {
+                var m = document.getElementById('menuCandidatos');
+                if (m) m.style.display = 'flex';
+            }
+        });
+    })();
+    </script>
+</head>
+<body>
+<div class="admin-container sidebar-is-open">
+
+    <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="cerrarMenu()" aria-hidden="true"></div>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebarNav">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-halved"></i>
+            <div>
+                <span>Veedores 2026</span>
+                <small>Panel administrador</small>
+            </div>
+            <button type="button" class="sidebar-close-btn" onclick="cerrarMenu()" aria-label="Cerrar menú">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="menu-section">
+            <span class="menu-label">Principal</span>
+            <a href="javascript:void(0)" id="menuResultados"
+               onclick="mostrarSeccion('resultados')" class="menu-item active">
+                <i class="fas fa-chart-bar"></i> <span>Resultados</span>
+            </a>
+            <a href="javascript:void(0)" id="menuJuntas"
+               onclick="mostrarSeccion('juntas')" class="menu-item">
+                <i class="fas fa-ballot-check"></i> <span>Estado de Juntas</span>
+            </a>
+            <a href="javascript:void(0)" id="menuActas"
+               onclick="mostrarSeccion('actas')" class="menu-item">
+                <i class="fas fa-camera"></i> <span>Fotos de Actas</span>
+            </a>
+            <a href="javascript:void(0)" id="menuCandidatos"
+               onclick="mostrarSeccion('candidatos')" class="menu-item"
+               style="display:none;">
+                <i class="fas fa-user-tie"></i> <span>Candidatos</span>
+            </a>
+            <a href="javascript:void(0)" id="menuConfiguracion"
+                onclick="mostrarSeccion('configuracion')" class="menu-item"
+                style="display:none;">
+                <i class="fas fa-gear"></i> <span>Configuración</span>
+            </a>
+            <a href="javascript:void(0)" id="menuUsuarios"
+                onclick="mostrarSeccion('usuarios')" class="menu-item">
+                <i class="fas fa-users"></i> <span>Usuarios</span>
+            </a>
+            <a href="../registro/registro.html" class="menu-item">
+                <i class="fas fa-user-plus"></i> <span>Nuevo Veedor</span>
+            </a>
+        </div>
+
+        <div class="menu-section">
+            <span class="menu-label">Exportar</span>
+            <button id="btnExcel" onclick="descargarExcel()" class="btn-sidebar-excel">
+                <i class="fas fa-file-excel"></i> <span>Descargar Excel</span>
+            </button>
+            <button id="btnFotosZip" type="button" onclick="descargarFotosActas()" class="btn-sidebar-fotos">
+                <i class="fas fa-images"></i> <span>Descargar fotos actas</span>
+            </button>
+        </div>
+
+        <div class="menu-section bottom">
+            <div class="user-info">
+                <i class="fas fa-user-shield"></i>
+                <span id="adminNombre">Admin</span>
+            </div>
+            <a href="javascript:void(0)" onclick="cerrarSesion()" class="menu-item logout">
+                <i class="fas fa-sign-out-alt"></i> <span>Cerrar Sesión</span>
+            </a>
+        </div>
+    </nav>
+
+    <header class="mobile-topbar">
+        <button type="button" class="btn-menu-movil" onclick="toggleMenu()" aria-label="Abrir menú">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="mobile-topbar-title">
+            <span>Veedores 2026</span>
+            <small>Panel administrador</small>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="main-content">
+
+        <!-- FILTROS GLOBALES -->
+        <div class="global-filters">
+            <div class="filter-group">
+                <i class="fas fa-map-marker-alt"></i>
+                <select id="filtroParroquia" onchange="onFiltroParroquiaChange()">
+                    <option value="todas">Todas las Parroquias</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <i class="fas fa-layer-group"></i>
+                <select id="filtroZona" onchange="onFiltroZonaChange()">
+                    <option value="todas">Todas las Zonas</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <i class="fas fa-ballot"></i>
+                <select id="filtroDignidad" onchange="onFiltroDignidadChange()">
+                    <option value="ALCALDE">Alcalde</option>
+                    <option value="CONCEJALES_URBANOS">Concejales Urbanos</option>
+                    <option value="CONCEJALES_RURALES">Concejales Rurales</option>
+                    <option value="JUNTAS_PARROQUIALES">Juntas Parroquiales</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- RESULTADOS -->
+        <div id="seccionResultados" class="seccion-panel activa">
+            <header class="page-header">
+                <div>
+                    <h1>Resultados Electorales</h1>
+                    <p class="header-sub">
+                        <span id="headerDignidadNombre">Alcalde</span> · Sucúa 2026
+                        <span class="header-badge"><span class="pulse"></span> Tiempo real</span>
+                    </p>
+                </div>
+            </header>
+
+            <div id="panelSuperadmin" class="stats-card panel-superadmin" style="display:none;">
+                <div class="panel-superadmin-header">
+                    <h3><i class="fas fa-lock"></i> Bloqueo de acceso</h3>
+                    <span class="badge-superadmin">Superadmin</span>
+                </div>
+                <p id="estadoAccesoTexto" class="panel-superadmin-text">
+                    Cargando estado...
+                </p>
+                <button type="button" id="btnToggleAcceso" class="btn-toggle-acceso bloquear" onclick="toggleBloqueoAcceso()">
+                    <i class="fas fa-ban"></i> Bloquear acceso
+                </button>
+            </div>
+
+            <div id="panelDignidades" class="stats-card panel-superadmin" style="display:none;">
+                <div class="panel-superadmin-header">
+                    <h3><i class="fas fa-ballot"></i> Dignidades</h3>
+                    <span class="badge-superadmin">Superadmin</span>
+                </div>
+                <p style="font-size:0.85rem;color:#64748b;margin-bottom:14px;">
+                    Habilita o deshabilita dignidades para los veedores
+                </p>
+                <div id="dignidadToggleList"></div>
+            </div>
+
+            <div class="results-layout">
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon verde"><i class="fas fa-vote-yea"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total Votos</div>
+                        <div class="kpi-value" id="kpiTotalVotos">0</div>
+                        <div class="kpi-sub">votos ingresados</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card kpi-card--wide">
+                    <div class="kpi-top">
+                        <div class="kpi-icon azul"><i class="fas fa-ballot-check"></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-label">Juntas con Acta</div>
+                            <div class="kpi-value" id="kpiJuntasConActa">0</div>
+                            <div class="kpi-sub" id="kpiTotalJuntas">de 0 juntas</div>
+                        </div>
+                    </div>
+                    <div class="kpi-progress">
+                        <div class="kpi-progress-header">
+                            <span>Progreso de digitación</span>
+                            <span id="kpiPctActas">0%</span>
+                        </div>
+                        <div class="kpi-progress-track">
+                            <div id="barraProgreso" class="kpi-progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon morado"><i class="fas fa-trophy"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Candidato Líder</div>
+                        <div class="kpi-value kpi-value--sm" id="kpiLider">—</div>
+                        <div class="kpi-sub">mayor votación</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon naranja"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Juntas Pendientes</div>
+                        <div class="kpi-value" id="kpiPendientes">0</div>
+                        <div class="kpi-sub">sin acta ingresada</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico + tabla -->
+            <div class="dashboard-grid">
+                <div class="stats-card results-chart">
+                    <div class="card-header">
+                        <div>
+                            <h3><i class="fas fa-chart-column"></i> Votos por Candidato</h3>
+                            <p class="chart-subtitle">Total acumulado según filtros seleccionados</p>
+                        </div>
+                        <div class="card-header-actions">
+                            <span class="last-update" id="lastUpdate"></span>
+                            <button onclick="cargarTodo()" class="btn-refresh">
+                                <i class="fas fa-sync"></i> <span id="refreshLabel">Actualizar</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="graficoCandidatos"></canvas>
+                    </div>
+                </div>
+
+                <div class="stats-card results-detail">
+                    <h3><i class="fas fa-list-ol"></i> Detalle por Candidato</h3>
+                    <p class="chart-subtitle">Ranking y porcentaje del total</p>
+                    <div class="table-scroll">
+                        <table class="custom-table">
+                            <thead>
+                                <tr><th>#</th><th>Candidato</th><th>Votos</th><th>%</th></tr>
+                            </thead>
+                            <tbody id="tablaCandidatos"></tbody>
+                        </table>
+                    </div>
+                    <div class="especiales-section">
+                        <h4><i class="fas fa-circle-xmark"></i> Votos Especiales</h4>
+                        <div id="tablaEspeciales" class="especiales-wrap"></div>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+
+        <!-- JUNTAS -->
+        <div id="seccionJuntas" class="seccion-panel">
+            <header class="page-header">
+                <div>
+                    <h1>Estado de Juntas</h1>
+                    <p class="header-sub">Seguimiento de actas ingresadas por los veedores</p>
+                </div>
+                <button onclick="cargarEstadoJuntas()" class="btn-refresh">
+                    <i class="fas fa-sync"></i> Actualizar
+                </button>
+            </header>
+
+            <div class="juntas-grid">
+                <div class="stats-card juntas-card-ok">
+                    <h3><i class="fas fa-circle-check"></i> Juntas con Acta</h3>
+                    <div id="listaJuntasRegistradas" class="junta-list"></div>
+                </div>
+                <div class="stats-card juntas-card-pend">
+                    <h3><i class="fas fa-circle-exclamation"></i> Juntas Pendientes</h3>
+                    <div id="listaJuntasPendientes" class="junta-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOTOS -->
+        <div id="seccionActas" class="seccion-panel">
+            <header class="page-header">
+                <div>
+                    <h1>Fotos de Actas</h1>
+                    <p class="header-sub">Evidencia fotográfica subida por los veedores</p>
+                </div>
+                <button onclick="cargarFotos()" class="btn-refresh">
+                    <i class="fas fa-sync"></i> Actualizar
+                </button>
+            </header>
+
+            <div id="galeria-fotos" class="galeria-fotos">
+                <div class="loading-block">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    <p>Cargando fotos...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CANDIDATOS -->
+        <div id="seccionCandidatos" class="seccion-panel">
+            <header class="page-header">
+                <div>
+                    <h1>Administrar Candidatos</h1>
+                    <p class="header-sub">Administra la lista de candidatos por dignidad</p>
+                </div>
+                <div class="filter-group">
+                    <i class="fas fa-ballot"></i>
+                    <select id="filtroDignidadCandidatos" onchange="cargarCandidatosAdmin()">
+                        <option value="ALCALDE">Alcalde</option>
+                        <option value="CONCEJALES_URBANOS">Concejales Urbanos</option>
+                        <option value="CONCEJALES_RURALES">Concejales Rurales</option>
+                        <option value="JUNTAS_PARROQUIALES">Juntas Parroquiales</option>
+                    </select>
+                </div>
+            </header>
+
+            <div class="stats-card stats-card--full">
+                <h3 style="margin-bottom:18px;"><i class="fas fa-plus-circle"></i> Agregar Candidato</h3>
+                <div class="form-row">
+                    <input type="text" id="inputNombreCandidato" placeholder="Nombre del candidato"
+                           class="input-form input-form--grow">
+                    <input type="text" id="inputPartidoCandidato" placeholder="Partido / Movimiento"
+                           class="input-form input-form--md">
+                    <input type="number" id="inputOrdenCandidato" placeholder="Orden"
+                           class="input-form input-form--sm" min="0">
+                    <button onclick="agregarCandidato()" class="btn-agregar">
+                        <i class="fas fa-plus"></i> Agregar
+                    </button>
+                </div>
+                <div id="msgCandidato" style="margin-top:12px;font-size:0.85rem;display:none;"></div>
+            </div>
+
+            <div class="stats-card">
+                <h3 style="margin-bottom:16px;"><i class="fas fa-list"></i> Lista de Candidatos</h3>
+                <table class="custom-table">
+                    <thead>
+                        <tr><th>Orden</th><th>Candidato</th><th>Partido</th><th>Dignidad</th><th>Acción</th></tr>
+                    </thead>
+                    <tbody id="tablaCandidatosAdmin"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- CONFIGURACIÓN -->
+        <div id="seccionConfiguracion" class="seccion-panel">
+            <header class="page-header">
+                <div>
+                    <h1>Configuración</h1>
+                    <p class="header-sub">Administra juntas, zonas y parroquias por dignidad</p>
+                </div>
+            </header>
+
+            <div class="stats-card" style="margin-bottom:20px;">
+                <h3 style="margin-bottom:16px;"><i class="fas fa-plus-circle"></i> Agregar Junta</h3>
+                <div class="form-row config-form">
+                    <select id="configDignidad" class="input-form input-form--md">
+                        <option value="ALCALDE">Alcalde</option>
+                        <option value="CONCEJALES_URBANOS">Concejales Urbanos</option>
+                        <option value="CONCEJALES_RURALES">Concejales Rurales</option>
+                        <option value="JUNTAS_PARROQUIALES">Juntas Parroquiales</option>
+                    </select>
+                    <input type="text" id="configParroquia" placeholder="Parroquia" class="input-form input-form--grow" list="listaParroquias">
+                    <datalist id="listaParroquias"></datalist>
+                    <input type="text" id="configZona" placeholder="Zona" class="input-form input-form--md" list="listaZonas">
+                    <datalist id="listaZonas"></datalist>
+                    <input type="text" id="configNumeroJunta" placeholder="N° Junta" class="input-form input-form--grow">
+                    <button onclick="agregarJuntaConfig()" class="btn-agregar">
+                        <i class="fas fa-plus"></i> Agregar
+                    </button>
+                </div>
+                <div id="msgConfigJunta" style="margin-top:12px;font-size:0.85rem;display:none;"></div>
+            </div>
+
+            <div class="stats-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-list"></i> Juntas Registradas</h3>
+                    <div class="header-actions">
+                        <div class="filter-group">
+                            <i class="fas fa-ballot"></i>
+                            <select id="configFiltroDignidad" onchange="cargarJuntasConfig()">
+                                <option value="">Todas las dignidades</option>
+                                <option value="ALCALDE">Alcalde</option>
+                                <option value="CONCEJALES_URBANOS">Concejales Urbanos</option>
+                                <option value="CONCEJALES_RURALES">Concejales Rurales</option>
+                                <option value="JUNTAS_PARROQUIALES">Juntas Parroquiales</option>
+                            </select>
+                        </div>
+                        <button onclick="cargarJuntasConfig()" class="btn-refresh">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr><th>Parroquia</th><th>Zona</th><th>Junta</th><th>Dignidad</th><th>Acción</th></tr>
+                        </thead>
+                        <tbody id="tablaJuntasConfig"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- USUARIOS -->
+        <div id="seccionUsuarios" class="seccion-panel">
+            <header class="page-header">
+                <div>
+                    <h1>Gestión de Usuarios</h1>
+                    <p class="header-sub">Veedores y administradores del sistema</p>
+                </div>
+                <a href="../registro/registro.html" class="btn-nuevo-usuario">
+                    <i class="fas fa-user-plus"></i> Nuevo Veedor
+                </a>
+            </header>
+
+            <div class="stats-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-users"></i> Usuarios Registrados</h3>
+                    <div class="header-actions">
+                        <div class="filter-group">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="inputBusqueda" placeholder="Buscar veedor..."
+                                   onkeyup="if(typeof filtrarUsuarios === 'function') filtrarUsuarios()"
+                                   class="input-form" style="border:none;background:transparent;padding:0;min-width:160px;">
+                        </div>
+                        <button onclick="cargarUsuarios()" class="btn-refresh">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="custom-table tabla-usuarios">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Usuario</th><th>Cédula</th>
+                                <th>Rol</th><th>Fecha</th><th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpoTablaUsuarios"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightboxAdmin" class="lightbox-admin" onclick="cerrarLightboxAdmin()" style="display:none;">
+    <div class="lightbox-inner" onclick="event.stopPropagation()">
+        <button class="lightbox-close" onclick="cerrarLightboxAdmin()">
+            <i class="fas fa-times"></i>
+        </button>
+        <img id="lightboxAdminImg" src="" alt="Foto del acta">
+        <div id="lightboxAdminInfo" class="lightbox-info"></div>
+    </div>
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>

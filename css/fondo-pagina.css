@@ -1,0 +1,26 @@
+/* Fondo compartido — coloca la imagen en administrador/fondo-admin.jpg */
+:root {
+    --bg-page: #eef2f7;
+    --fondo-pagina-capas:
+        linear-gradient(
+            165deg,
+            rgba(238, 242, 247, 0.45) 0%,
+            rgba(238, 242, 247, 0.28) 50%,
+            rgba(238, 242, 247, 0.42) 100%
+        ),
+        radial-gradient(ellipse 80% 50% at 100% 0%, rgba(16, 185, 129, 0.03), transparent),
+        radial-gradient(ellipse 60% 40% at 0% 100%, rgba(59, 130, 246, 0.02), transparent),
+        url('../administrador/fondo-admin.jpg');
+    --fondo-pagina-size: cover, auto, auto, cover;
+    --fondo-pagina-position: center, center, center, center;
+    --fondo-pagina-attachment: scroll, scroll, scroll, fixed;
+}
+
+body {
+    background-color: var(--bg-page);
+    background-image: var(--fondo-pagina-capas);
+    background-size: var(--fondo-pagina-size);
+    background-position: var(--fondo-pagina-position);
+    background-attachment: var(--fondo-pagina-attachment);
+    background-repeat: no-repeat;
+}

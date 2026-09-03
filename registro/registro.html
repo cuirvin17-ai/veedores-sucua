@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Veedor — Sucúa 2026</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../acceso/acceso.css">
+    <style>
+        body.registro-page {
+            align-items: flex-start;
+            padding: 12px 16px 24px;
+        }
+
+        .registro-page .login-wrapper {
+            padding: 0 !important;
+            max-width: 400px;
+        }
+
+        .registro-page .login-card {
+            max-width: 400px;
+            padding: 24px 22px 20px;
+        }
+
+        .registro-page .login-logo {
+            margin-bottom: 10px;
+        }
+
+        .registro-page .login-logo img {
+            width: 72px;
+            max-height: 72px;
+        }
+
+        .registro-page .login-title {
+            font-size: 1.28rem;
+            margin-bottom: 4px;
+        }
+
+        .registro-page .login-subtitle {
+            margin-bottom: 18px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .registro-page .form-group {
+            margin-bottom: 12px;
+        }
+
+        .registro-page .form-group input,
+        .registro-page select.form-select {
+            padding: 10px 14px;
+        }
+
+        .registro-page .btn-login {
+            padding: 12px;
+            margin-top: 2px;
+        }
+
+        .registro-page .registro-volver {
+            margin-top: 14px;
+        }
+
+        .registro-page .form-group label {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+
+        .msg-ok {
+            background: #ecfdf5;
+            border: 1px solid #6ee7b7;
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: #065f46;
+            font-size: 0.84rem;
+            font-weight: 600;
+            margin-bottom: 14px;
+            text-align: left;
+            display: none;
+        }
+
+        select.form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.93rem;
+            font-family: 'Inter', sans-serif;
+            color: #1e293b;
+            outline: none;
+            background: #f8fafc;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
+        }
+
+        select.form-select:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+            background: white;
+        }
+
+        .registro-volver {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .registro-volver a {
+            color: #10b981;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .registro-volver a:hover { text-decoration: underline; }
+    </style>
+    <script>
+        (function() {
+            var id  = localStorage.getItem('idUsuario');
+            var rol = localStorage.getItem('rolUsuario');
+            if (!id || rol !== 'admin') window.location.href = '../acceso/acceso.html';
+        })();
+    </script>
+</head>
+<body class="registro-page">
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-logo">
+            <img src="../icon-192.png" alt="Veedores Electorales Sucúa 2026" width="72" height="72">
+        </div>
+        <h1 class="login-title">Nuevo Veedor</h1>
+        <p class="login-subtitle">Complete los datos para crear la cuenta en el sistema</p>
+
+        <form id="formRegistro" autocomplete="off">
+            <div class="form-group">
+                <label for="cedula"><i class="fas fa-id-card"></i> Número de Cédula</label>
+                <input type="text" id="cedula" placeholder="Ej: 1400XXXXXX"
+                       maxlength="20" required>
+            </div>
+
+            <div class="form-group">
+                <label for="usuario"><i class="fas fa-user"></i> Nombre de Usuario</label>
+                <input type="text" id="usuario" placeholder="Nombre para iniciar sesión" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password"><i class="fas fa-lock"></i> Contraseña</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+
+            <div class="form-group">
+                <label for="rol"><i class="fas fa-shield-halved"></i> Rol del Sistema</label>
+                <select id="rol" class="form-select" required>
+                    <option value="veedor" selected>Veedor (App Móvil)</option>
+                    <option value="admin">Administrador (Panel Web)</option>
+                </select>
+            </div>
+
+            <div id="mensajeOk" class="msg-ok"></div>
+            <div id="mensajeError" class="msg-error" style="display:none;"></div>
+
+            <button type="submit" id="btnRegistrar" class="btn-login">
+                <i class="fas fa-save"></i> Crear Usuario
+            </button>
+        </form>
+
+        <div class="registro-volver">
+            <a href="../administrador/admin.html">
+                <i class="fas fa-arrow-left"></i> Volver al Panel
+            </a>
+        </div>
+    </div>
+</div>
+<script src="registro.js"></script>
+</body>
+</html>

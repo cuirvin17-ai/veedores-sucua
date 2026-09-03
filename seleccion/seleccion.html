@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selección de Junta — Veedores Sucúa 2026</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="seleccion.css">
+    <script>
+        (function() {
+            if (!localStorage.getItem('idUsuario')) {
+                window.location.href = '../acceso/acceso.html';
+            }
+        })();
+    </script>
+</head>
+<body>
+
+<!-- Aviso offline (fixed, siempre arriba) -->
+<div id="offline-msg" style="
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #dc2626;
+    color: #fff;
+    text-align: center;
+    padding: 6px 12px;
+    font-weight: 700;
+    z-index: 9999;
+    font-size: 0.78rem;
+    line-height: 1.3;
+">
+    ⚠️ Sin conexión — Los datos se guardarán localmente
+</div>
+
+<div class="page-wrapper">
+
+    <!-- HEADER -->
+    <header class="top-bar">
+        <div class="top-bar-left">
+            <i class="fas fa-shield-halved"></i>
+            <span>Veedores Sucúa 2026</span>
+        </div>
+        <div class="top-bar-right">
+            <span id="nombreVeedor" class="veedor-name"></span>
+            <button onclick="cerrarSesion()" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- BADGE PENDIENTES — justo debajo del header -->
+    <div id="badge-pendientes" style="display:none; text-align:center; padding: 10px 16px 0;">
+        <span style="
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #fef3c7;
+            border: 1.5px solid #f59e0b;
+            color: #92400e;
+            border-radius: 999px;
+            padding: 6px 18px;
+            font-size: 0.82rem;
+            font-weight: 700;
+        ">📦 <span id="txt-pendientes"></span></span>
+    </div>
+
+    <!-- CONTENIDO -->
+    <main class="main-center">
+        <div class="seleccion-card">
+
+            <div class="card-icon">
+                <i class="fas fa-location-dot"></i>
+            </div>
+            <h2 class="card-title">Seleccione su Junta</h2>
+            <p class="card-subtitle">Escoja la parroquia, zona y número de junta donde realizó la veeduría</p>
+
+            <!-- DIGNIDAD SELECCIONADA -->
+            <div id="dignidadBadge" style="display:inline-flex;align-items:center;gap:6px;background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:999px;padding:6px 16px;margin-bottom:24px;font-size:0.82rem;font-weight:600;color:#6d28d9;">
+                <i class="fas fa-check-circle" style="font-size:0.75rem;"></i>
+                <span id="dignidadBadgeText"></span>
+            </div>
+
+            <!-- PASO 1: PARROQUIA -->
+            <div class="form-step" id="stepParroquia">
+                <label class="step-label">
+                    <span class="step-num">1</span> Parroquia
+                </label>
+                <div class="select-wrap">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <select id="selectParroquia" onchange="onParroquiaChange()">
+                        <option value="">— Seleccione parroquia —</option>
+                    </select>
+                    <i class="fas fa-chevron-down arrow"></i>
+                </div>
+            </div>
+
+            <!-- PASO 2: ZONA -->
+            <div class="form-step" id="stepZona" style="display:none;">
+                <label class="step-label">
+                    <span class="step-num">2</span> Zona
+                </label>
+                <div class="select-wrap">
+                    <i class="fas fa-layer-group"></i>
+                    <select id="selectZona" onchange="onZonaChange()">
+                        <option value="">— Seleccione zona —</option>
+                    </select>
+                    <i class="fas fa-chevron-down arrow"></i>
+                </div>
+            </div>
+
+            <!-- PASO 3: JUNTA -->
+            <div class="form-step" id="stepJunta" style="display:none;">
+                <label class="step-label">
+                    <span class="step-num">3</span> Junta Receptora
+                </label>
+                <div class="select-wrap">
+                    <i class="fas fa-ballot-check"></i>
+                    <select id="selectJunta">
+                        <option value="">— Seleccione junta —</option>
+                    </select>
+                    <i class="fas fa-chevron-down arrow"></i>
+                </div>
+            </div>
+
+            <!-- AVISO JUNTA YA REGISTRADA -->
+            <div id="avisoRegistrada" class="aviso-warn" style="display:none;">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span id="textoAvisoRegistrada"></span>
+            </div>
+
+            <!-- RESUMEN SELECCIÓN -->
+            <div id="resumenSeleccion" class="resumen-box" style="display:none;">
+                <i class="fas fa-check-circle"></i>
+                <span id="textoResumen"></span>
+            </div>
+
+            <button id="btnContinuar" onclick="continuar()" class="btn-continuar" disabled>
+                <i class="fas fa-arrow-right"></i> Continuar a Ingreso de Votos
+            </button>
+
+            <button onclick="cambiarDignidad()" class="btn-volver" style="margin-top:10px;width:100%;padding:12px;background:transparent;color:#64748b;border:1.5px solid #e2e8f0;border-radius:14px;font-size:0.88rem;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;">
+                <i class="fas fa-arrow-left"></i> Cambiar Dignidad
+            </button>
+
+        </div>
+    </main>
+
+</div>
+
+<!-- Aviso de sincronización exitosa -->
+<div id="avisoSync" style="display:none; position:fixed; bottom:20px; left:50%;
+     transform:translateX(-50%); background:#059669; color:#fff;
+     padding:10px 20px; border-radius:12px; font-weight:600; z-index:9999;">
+</div>
+
+<script src="seleccion.js"></script>
+</body>
+</html>

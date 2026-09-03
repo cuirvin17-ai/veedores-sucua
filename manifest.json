@@ -1,0 +1,15 @@
+{
+  "name": "Veedores Electorales Sucúa 2026",
+  "short_name": "Veedores 2026",
+  "description": "Sistema de Veeduría Electoral — Municipio de Sucúa",
+  "start_url": "/veedores_sucua/acceso/acceso.html",
+  "scope": "/veedores_sucua/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/veedores_sucua/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/veedores_sucua/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

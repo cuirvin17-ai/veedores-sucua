@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleccionar Dignidad — Veedores Sucúa 2026</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="dignidad.css">
+    <script>
+        (function() {
+            if (!localStorage.getItem('idUsuario')) {
+                window.location.href = '../acceso/acceso.html';
+            }
+        })();
+    </script>
+</head>
+<body>
+
+<div id="offline-msg" style="display:none;position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;text-align:center;padding:6px 12px;font-weight:700;z-index:9999;font-size:0.78rem;">
+    Sin conexión — Los datos se guardarán localmente
+</div>
+
+<div class="page-wrapper">
+    <header class="top-bar">
+        <div class="top-bar-left">
+            <i class="fas fa-shield-halved"></i>
+            <span>Veedores Sucúa 2026</span>
+        </div>
+        <div class="top-bar-right">
+            <span id="nombreVeedor" class="veedor-name"></span>
+            <button onclick="cerrarSesion()" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="main-center">
+        <div class="dignidad-card">
+            <div class="card-icon">
+                <i class="fas fa-ballot"></i>
+            </div>
+            <h2 class="card-title">Seleccione la Dignidad</h2>
+            <p class="card-subtitle">Elija el cargo a votar en esta acta</p>
+
+            <div id="dignidadLista" class="dignidad-grid"></div>
+
+            <button id="btnContinuar" onclick="continuar()" class="btn-continuar" disabled>
+                <i class="fas fa-arrow-right"></i> Continuar a Selección de Junta
+            </button>
+
+            <button onclick="volver()" class="btn-volver">
+                <i class="fas fa-arrow-left"></i> Volver
+            </button>
+        </div>
+    </main>
+</div>
+
+<script src="dignidad.js"></script>
+</body>
+</html>
