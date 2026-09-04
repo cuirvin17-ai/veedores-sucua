@@ -88,20 +88,134 @@ app.use('/veedores_sucua', express.static(publicPath, { maxAge: '0', etag: false
 app.use('/uploads', express.static(uploadsDir));
 
 // ── BASE DE DATOS ─────────────────────────────────────────────────────
-const pool = mysql.createPool({
-    host:     process.env.DB_HOST     || 'localhost',
-    user:     process.env.DB_USER     || 'root',
-    password: process.env.DB_PASSWORD || 'Betoben1',
-    database: process.env.DB_NAME || 'veedores_sucua_bd',
-    charset:  'utf8mb4',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
-const db = pool.promise();
+const DATABASE_URL = process.env.DATABASE_URL;
+let isPostgres = false;
+let pgPool;
+let db;
+
+if (DATABASE_URL) {
+    const { Pool } = require('pg');
+    pgPool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
+    isPostgres = true;
+
+    function pgConvert(sql, params = []) {
+        let idx = 1;
+        let s = sql.replace(/\?/g, () => `$${idx++}`);
+        const pkMap = { sistema_config: 'clave', dignidad_config: 'clave', usuarios: 'usuario', fotos_actas: 'junta_id', resultados: 'id' };
+        const tableMatch = s.match(/INSERT\s+INTO\s+(\w+)/i);
+        const tableName = tableMatch ? tableMatch[1] : '';
+        const pk = pkMap[tableName] || 'id';
+        s = s.replace(/ON\s+DUPLICATE\s+KEY\s+UPDATE\s+(\w+)\s*=\s*VALUES\(\1\)/gi, `ON CONFLICT (${pk}) DO UPDATE SET $1 = EXCLUDED.$1`);
+        s = s.replace(/ON\s+DUPLICATE\s+KEY\s+UPDATE\s+(\w+)\s*=\s*VALUES\(\w+\)/gi, `ON CONFLICT (${pk}) DO UPDATE SET $1 = EXCLUDED.$1`);
+        s = s.replace(/INSERT\s+IGNORE\s+INTO/gi, 'INSERT INTO');
+        s = s.replace(/INSERT\s+IGNORE/gi, 'INSERT');
+        s = s.replace(/ORDER BY FIELD\((\w+),\s*'([^']+)'(?:,\s*'([^']+)')*(?:,\s*'([^']+)')*\)/g, (_, col, v1, v2, v3) => {
+            let caseExpr = `CASE ${col}`;
+            if (v1) caseExpr += ` WHEN '${v1}' THEN 1`;
+            if (v2) caseExpr += ` WHEN '${v2}' THEN 2`;
+            if (v3) caseExpr += ` WHEN '${v3}' THEN 3`;
+            caseExpr += ' END';
+            return `ORDER BY ${caseExpr}`;
+        });
+        s = s.replace(/IF\(([^,]+),\s*'([^']*)',\s*'([^']*)'\)/gi, "CASE WHEN $1 THEN '$2' ELSE '$3' END");
+        s = s.replace(/DATE_FORMAT\((\w+\.\w+),\s*'%d\/%m\/%Y'\)/g, "TO_CHAR($1, 'DD/MM/YYYY')");
+        s = s.replace(/DATE_FORMAT\((\w+\.\w+),\s*'%H:%i:%s'\)/g, "TO_CHAR($1, 'HH24:MI:SS')");
+        s = s.replace(/TINYINT\(1\)/gi, 'BOOLEAN');
+        s = s.replace(/IFNULL\((\w+),\s*([^)]+)\)/gi, 'COALESCE($1, $2)');
+        return { sql: s, params };
+    }
+
+    function coerceNumericStrings(rows) {
+        if (!rows || !rows.length) return rows;
+        return rows.map(row => {
+            const out = {};
+            for (const [k, v] of Object.entries(row)) {
+                out[k] = (typeof v === 'string' && /^\d+$/.test(v)) ? Number(v) : v;
+            }
+            return out;
+        });
+    }
+
+    db = {
+        execute: async (sql, params = []) => {
+            const converted = pgConvert(sql, params);
+            let pgSql = converted.sql;
+            let isInsert = /^\s*INSERT\s/i.test(pgSql);
+            let isWrite = /^\s*(INSERT|UPDATE|DELETE)\s/i.test(pgSql);
+            if (isInsert && !/RETURNING/i.test(pgSql)) pgSql += ' RETURNING *';
+            try {
+                const result = await pgPool.query(pgSql, converted.params);
+                if (isInsert && result.rows.length > 0) {
+                    const row = result.rows[0];
+                    return [{ insertId: row.id || row.clave || 0, affectedRows: result.rowCount }, result.fields];
+                }
+                if (isWrite) return [{ affectedRows: result.rowCount }, result.fields];
+                return [coerceNumericStrings(result.rows), result.fields];
+            } catch (err) {
+                if (err.code === '23505') { const e = new Error('Duplicate entry'); e.code = 'ER_DUP_ENTRY'; throw e; }
+                throw err;
+            }
+        },
+        query: async (sql, params = []) => {
+            const converted = pgConvert(sql, params);
+            let pgSql = converted.sql;
+            let isInsert = /^\s*INSERT\s/i.test(pgSql);
+            if (isInsert && !/RETURNING/i.test(pgSql)) pgSql += ' RETURNING *';
+            try {
+                const result = await pgPool.query(pgSql, converted.params);
+                if (isInsert && result.rows.length > 0) {
+                    const row = result.rows[0];
+                    return [{ insertId: row.id || row.clave || 0, affectedRows: result.rowCount }, result.fields];
+                }
+                if (/^\s*(INSERT|UPDATE|DELETE)\s/i.test(pgSql)) return [{ affectedRows: result.rowCount }, result.fields];
+                return [coerceNumericStrings(result.rows), result.fields];
+            } catch (err) {
+                if (err.code === '23505') { const e = new Error('Duplicate entry'); e.code = 'ER_DUP_ENTRY'; throw e; }
+                throw err;
+            }
+        }
+    };
+
+    console.log('✅ PostgreSQL detectado (DATABASE_URL)');
+    pgPool.query('SELECT 1').then(() => {
+        initSistemaConfig();
+        initDignidadesConfig();
+        console.log('✅ PostgreSQL conectado y tablas inicializadas');
+    }).catch(err => console.error('❌ PostgreSQL:', err.message));
+} else {
+    const mysql = require('mysql2');
+    const pool = mysql.createPool({
+        host:     process.env.DB_HOST     || 'localhost',
+        user:     process.env.DB_USER     || 'root',
+        password: process.env.DB_PASSWORD || 'Betoben1',
+        database: process.env.DB_NAME || 'veedores_sucua_bd',
+        charset:  'utf8mb4',
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+    });
+    db = pool.promise();
+
+    pool.getConnection((err, conn) => {
+        if (err) console.error('❌ MySQL:', err.message);
+        else {
+            console.log('✅ MySQL conectado');
+            conn.release();
+            initSistemaConfig();
+            asegurarColumnaPassword();
+            initDignidadesConfig();
+            asegurarColumnasDignidad();
+        }
+    });
+}
 
 async function initSistemaConfig() {
     try {
+        if (isPostgres) {
+            await db.execute(`CREATE TABLE IF NOT EXISTS sistema_config (clave VARCHAR(64) PRIMARY KEY, valor VARCHAR(255) NOT NULL DEFAULT '0')`);
+            await db.execute("INSERT INTO sistema_config (clave, valor) VALUES ('acceso_bloqueado', '0') ON CONFLICT DO NOTHING");
+            return;
+        }
         await db.execute(`
             CREATE TABLE IF NOT EXISTS sistema_config (
                 clave VARCHAR(64) PRIMARY KEY,
@@ -126,7 +240,7 @@ async function estaAccesoBloqueado() {
         const [rows] = await db.execute(
             "SELECT valor FROM sistema_config WHERE clave = 'acceso_bloqueado' LIMIT 1"
         );
-        return rows.length > 0 && rows[0].valor === '1';
+        return rows.length > 0 && String(rows[0].valor) === '1';
     } catch (err) {
         console.error('❌ Error leyendo acceso_bloqueado:', err.message);
         return false;
@@ -161,6 +275,13 @@ const DIGNIDADES_CONFIG = ['ALCALDE', 'CONCEJALES_URBANOS', 'CONCEJALES_RURALES'
 
 async function initDignidadesConfig() {
     try {
+        if (isPostgres) {
+            await db.execute(`CREATE TABLE IF NOT EXISTS dignidad_config (clave VARCHAR(64) PRIMARY KEY, habilitada BOOLEAN NOT NULL DEFAULT TRUE)`);
+            for (const clave of DIGNIDADES_CONFIG) {
+                await db.execute(`INSERT INTO dignidad_config (clave, habilitada) VALUES ($1, true) ON CONFLICT DO NOTHING`, [clave]);
+            }
+            return;
+        }
         await db.execute(`
             CREATE TABLE IF NOT EXISTS dignidad_config (
                 clave VARCHAR(64) PRIMARY KEY,
@@ -179,6 +300,10 @@ async function initDignidadesConfig() {
 
 async function obtenerEstadoDignidades() {
     try {
+        if (isPostgres) {
+            const [rows] = await db.execute('SELECT clave, habilitada FROM dignidad_config');
+            return rows;
+        }
         const [rows] = await db.execute('SELECT clave, habilitada FROM dignidad_config ORDER BY FIELD(clave, ?,?,?,?)', DIGNIDADES_CONFIG);
         return rows;
     } catch (err) {
@@ -241,17 +366,7 @@ async function asegurarColumnasDignidad() {
     }
 }
 
-pool.getConnection((err, conn) => {
-    if (err) console.error('❌ MySQL:', err.message);
-    else {
-        console.log('✅ MySQL conectado');
-        conn.release();
-        initSistemaConfig();
-        asegurarColumnaPassword();
-        initDignidadesConfig();
-        asegurarColumnasDignidad();
-    }
-});
+// Database connection handled above
 
 // ── SESSION MANAGEMENT ───────────────────────────────────────────────
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
