@@ -105,8 +105,11 @@ if (DATABASE_URL) {
         const tableMatch = s.match(/INSERT\s+INTO\s+(\w+)/i);
         const tableName = tableMatch ? tableMatch[1] : '';
         const pk = pkMap[tableName] || 'id';
-        s = s.replace(/ON\s+DUPLICATE\s+KEY\s+UPDATE\s+(\w+)\s*=\s*VALUES\(\1\)/gi, `ON CONFLICT (${pk}) DO UPDATE SET $1 = EXCLUDED.$1`);
-        s = s.replace(/ON\s+DUPLICATE\s+KEY\s+UPDATE\s+(\w+)\s*=\s*VALUES\(\w+\)/gi, `ON CONFLICT (${pk}) DO UPDATE SET $1 = EXCLUDED.$1`);
+        // Convert ON DUPLICATE KEY UPDATE — handles multi-column clauses
+        s = s.replace(/ON\s+DUPLICATE\s+KEY\s+UPDATE\s+([^\n]*?)(?=\s*RETURNING|\s*;|\s*$)/gi, (match, clause) => {
+            const converted = clause.replace(/(\w+)\s*=\s*VALUES\(\w+\)/gi, '$1 = EXCLUDED.$1');
+            return `ON CONFLICT (${pk}) DO UPDATE SET ${converted}`;
+        });
         s = s.replace(/INSERT\s+IGNORE\s+INTO/gi, 'INSERT INTO');
         s = s.replace(/INSERT\s+IGNORE/gi, 'INSERT');
         s = s.replace(/ORDER BY FIELD\((\w+),\s*'([^']+)'(?:,\s*'([^']+)')*(?:,\s*'([^']+)')*\)/g, (_, col, v1, v2, v3) => {
