@@ -101,7 +101,7 @@ if (DATABASE_URL) {
     function pgConvert(sql, params = []) {
         let idx = 1;
         let s = sql.replace(/\?/g, () => `$${idx++}`);
-        const pkMap = { sistema_config: 'clave', dignidad_config: 'clave', usuarios: 'usuario', fotos_actas: 'junta_id', resultados: 'id' };
+        const pkMap = { sistema_config: 'clave', dignidad_config: 'clave', usuarios: 'usuario', fotos_actas: 'junta_id', resultados: 'junta_id, dignidad, candidato' };
         const tableMatch = s.match(/INSERT\s+INTO\s+(\w+)/i);
         const tableName = tableMatch ? tableMatch[1] : '';
         const pk = pkMap[tableName] || 'id';
