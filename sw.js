@@ -1,6 +1,13 @@
-const CACHE = 'veedores-sucua-2026-v4';
+const CACHE = 'veedores-sucua-2026-v5';
 
 const ARCHIVOS_ESTATICOS = [
+    '/veedores_sucua/vendor/fontawesome/css/all.min.css',
+    '/veedores_sucua/vendor/fontawesome/webfonts/fa-solid-900.woff2',
+    '/veedores_sucua/vendor/fontawesome/webfonts/fa-solid-900.ttf',
+    '/veedores_sucua/vendor/fontawesome/webfonts/fa-regular-400.woff2',
+    '/veedores_sucua/vendor/fontawesome/webfonts/fa-regular-400.ttf',
+    '/veedores_sucua/vendor/fontawesome/webfonts/fa-brands-400.woff2',
+    '/veedores_sucua/vendor/fontawesome/webfonts/fa-brands-400.ttf',
     '/veedores_sucua/acceso/acceso.html',
     '/veedores_sucua/acceso/acceso.css',
     '/veedores_sucua/acceso/acceso.js',
