@@ -186,12 +186,16 @@ if (DATABASE_URL) {
         console.log('✅ PostgreSQL conectado y tablas inicializadas');
     }).catch(err => console.error('❌ PostgreSQL:', err.message));
 } else {
+    // MySQL (local) o TiDB Cloud (TLS obligatorio en endpoint público)
     const mysql = require('mysql2');
+    const useSSL = process.env.DB_SSL === 'true' || (process.env.DB_HOST || '').includes('tidbcloud.com');
     const pool = mysql.createPool({
         host:     process.env.DB_HOST     || 'localhost',
+        port:     parseInt(process.env.DB_PORT || '3306', 10),
         user:     process.env.DB_USER     || 'root',
         password: process.env.DB_PASSWORD || 'Betoben1',
         database: process.env.DB_NAME || 'veedores_sucua_bd',
+        ssl:      useSSL ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
         charset:  'utf8mb4',
         waitForConnections: true,
         connectionLimit: 10,

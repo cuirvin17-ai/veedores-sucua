@@ -4,17 +4,20 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install
-    startCommand: node server-render.js
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: veedores-db
-          property: connectionString
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "4000"
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: veedores_sucua_bd
+      - key: DB_SSL
+        value: "true"
     healthCheckPath: /health
-
-databases:
-  - name: veedores-db
-    plan: free
-    databaseName: veedores_sucua
