@@ -1299,24 +1299,33 @@ function juntaEtiqueta(j) {
 }
 
 function cargarOpcionesFiltrosAsign() {
+    const dignidades = [...new Set(asignJuntas.map(j => j.dignidad).filter(Boolean))]
+        .sort((a, b) => (DIG_NOMBRES[a] || a).localeCompare(DIG_NOMBRES[b] || b));
     const parroquias = [...new Set(asignJuntas.map(j => j.parroquia))].sort();
     const zonas      = [...new Set(asignJuntas.map(j => j.zona))].sort();
+    const selD = document.getElementById('asignFiltroDignidad');
     const selP = document.getElementById('asignFiltroParroquia');
     const selZ = document.getElementById('asignFiltroZona');
-    const prevP = selP.value, prevZ = selZ.value;
+    const prevD = selD.value, prevP = selP.value, prevZ = selZ.value;
+    selD.innerHTML = '<option value="todas">Todas las dignidades</option>'
+        + dignidades.map(d => `<option value="${escAtr(d)}">${escAtr(DIG_NOMBRES[d] || d)}</option>`).join('');
     selP.innerHTML = '<option value="todas">Todas las parroquias</option>'
         + parroquias.map(p => `<option value="${escAtr(p)}">${escAtr(p)}</option>`).join('');
     selZ.innerHTML = '<option value="todas">Todas las zonas</option>'
         + zonas.map(z => `<option value="${escAtr(z)}">${escAtr(z)}</option>`).join('');
+    if (dignidades.includes(prevD)) selD.value = prevD;
     if (parroquias.includes(prevP)) selP.value = prevP;
     if (zonas.includes(prevZ)) selZ.value = prevZ;
 }
 
 function juntasFiltradasAsign() {
+    const d = document.getElementById('asignFiltroDignidad').value;
     const p = document.getElementById('asignFiltroParroquia').value;
     const z = document.getElementById('asignFiltroZona').value;
     return asignJuntas.filter(j =>
-        (p === 'todas' || j.parroquia === p) && (z === 'todas' || j.zona === z));
+        (d === 'todas' || j.dignidad === d) &&
+        (p === 'todas' || j.parroquia === p) &&
+        (z === 'todas' || j.zona === z));
 }
 
 function abrirAsignacion(id) {
