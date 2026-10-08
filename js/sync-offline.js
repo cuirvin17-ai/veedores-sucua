@@ -4,6 +4,7 @@
 
 (function () {
     const API = window.location.origin;
+    const enPaginaAcceso = String(window.location.pathname || '').includes('/acceso/');
 
     function headersSync(extra = {}) {
         const token = localStorage.getItem('authToken');
@@ -39,6 +40,7 @@
     }
 
     function avisarSesion() {
+        if (enPaginaAcceso) return; // en la página de login se avisa tras intentar sincronizar
         if (!avisoSesionExpirada) {
             avisoSesionExpirada = true;
             toast('🔒 Sesión expirada: cierre sesión y vuelva a entrar para enviar las actas pendientes.', '#ef4444');
@@ -194,11 +196,17 @@
     window.sincronizarVotos     = sincronizarVotos;
     window.sincronizarFotos     = sincronizarFotos;
     window.intentarSincronizar  = intentarSincronizar;
+    window.colaPendientes       = contarPendientes;
+    window.resetAvisoSesion     = () => { avisoSesionExpirada = false; };
 
     // Disparadores: al recuperar conexión, al cargar la página y cada 30 s
+    // (en la página de acceso la sincronización se dispara tras el login)
     window.addEventListener('online',  () => setTimeout(intentarSincronizar, 800));
     window.addEventListener('offline', () => { avisoSesionExpirada = false; });
-    window.addEventListener('DOMContentLoaded', () => setTimeout(intentarSincronizar, 1200));
+    window.addEventListener('DOMContentLoaded', () => {
+        if (enPaginaAcceso) return;
+        setTimeout(intentarSincronizar, 1200);
+    });
     setInterval(() => { intentarSincronizar(); }, 30000);
 
     // Refrescar el badge de pendientes de la página actual

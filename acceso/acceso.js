@@ -116,6 +116,18 @@ async function validarIngreso(e) {
                 guardarCredencialesOffline(usuario, password, data.user);
                 console.log(' Login online exitoso — token guardado');
 
+                // Enviar actas pendientes al momento de ingresar
+                if (typeof intentarSincronizar === 'function') {
+                    if (typeof resetAvisoSesion === 'function') resetAvisoSesion();
+                    if (typeof colaPendientes === 'function' && colaPendientes() > 0) {
+                        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Enviando actas pendientes...';
+                        await Promise.race([
+                            intentarSincronizar(),
+                            new Promise(r => setTimeout(r, 8000))
+                        ]);
+                    }
+                }
+
                 redirigir(data.user.rol);
             } else {
                 mostrarError(data.message || 'Usuario o contraseña incorrectos');
