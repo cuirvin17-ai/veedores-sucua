@@ -625,7 +625,7 @@ app.get('/dignidades-estado', async (_, res) => {
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-app.post('/dignidades-estado/:clave', requiereRol('superadmin'), async (req, res) => {
+app.post('/dignidades-estado/:clave', autenticarSesion, requiereRol('superadmin'), async (req, res) => {
     const clave = String(req.params.clave || '').toUpperCase();
     const { habilitada } = req.body;
     if (!DIGNIDADES_CONFIG.includes(clave))
