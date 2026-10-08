@@ -536,6 +536,11 @@ app.post('/registrar', registerLimiter, validarRegistro, requiereRol('admin', 's
             message: 'El sistema está bloqueado. No se pueden registrar usuarios.'
         });
     }
+    if (req.auth.user.rol === 'admin' && rol !== 'veedor')
+        return res.status(403).json({
+            success: false,
+            message: 'Los administradores solo pueden crear veedores'
+        });
     try {
         const [exist] = await db.execute('SELECT id FROM usuarios WHERE usuario=?', [usuario]);
         if (exist.length > 0)
