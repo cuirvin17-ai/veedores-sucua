@@ -447,6 +447,29 @@ function renderKPIs(stats, resumen, pendientes) {
     if (elLider) elLider.textContent = stats.length > 0 ? stats[0].candidato : '—';
 }
 
+// Plugin: muestra el total de votos sobre cada barra del gráfico
+const pluginVotosBarras = {
+    id: 'etiquetasVotos',
+    afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        chart.data.datasets.forEach((ds, i) => {
+            const meta = chart.getDatasetMeta(i);
+            if (meta.hidden) return;
+            meta.data.forEach((bar, idx) => {
+                const v = ds.data[idx];
+                if (v === undefined || v === null) return;
+                ctx.save();
+                ctx.fillStyle = '#334155';
+                ctx.font = "700 13px 'Plus Jakarta Sans', sans-serif";
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(Number(v).toLocaleString(), bar.x, bar.y - 8);
+                ctx.restore();
+            });
+        });
+    }
+};
+
 function renderGrafico(datos) {
     const canvas = document.getElementById('graficoCandidatos');
     if (!canvas) return;
@@ -461,6 +484,7 @@ function renderGrafico(datos) {
 
     window._grafico = new Chart(ctx, {
         type: 'bar',
+        plugins: [pluginVotosBarras],
         data: {
             labels,
             datasets: [{
@@ -493,6 +517,7 @@ function renderGrafico(datos) {
                 },
                 y: {
                     beginAtZero: true,
+                    grace: '8%',
                     grid: { color: '#f1f5f9' },
                     ticks: { precision: 0, color: '#94a3b8', font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 } }
                 }
