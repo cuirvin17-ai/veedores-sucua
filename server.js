@@ -1120,7 +1120,7 @@ app.get('/parroquias-disponibles', async (_, res) => {
 // ── CORRECCIÓN DE JUNTAS (superadmin) ─────────────────────────────────
 
 // Lista de juntas con acta ingresada (una fila por junta+dignidad con resultados)
-app.get('/juntas-correccion', requiereRol('superadmin'), async (req, res) => {
+app.get('/juntas-correccion', requiereRol('admin', 'superadmin'), async (req, res) => {
     const { parroquia, zona, dignidad } = req.query;
     const dig = dignidad || 'ALCALDE';
     if (!DIGNIDADES_CONFIG.includes(dig))
@@ -1148,7 +1148,7 @@ app.get('/juntas-correccion', requiereRol('superadmin'), async (req, res) => {
 });
 
 // Detalle de un acta: foto + valores ingresados + candidatos activos
-app.get('/juntas-correccion/:junta_id', requiereRol('superadmin'), async (req, res) => {
+app.get('/juntas-correccion/:junta_id', requiereRol('admin', 'superadmin'), async (req, res) => {
     const { junta_id } = req.params;
     const dig = req.query.dignidad || 'ALCALDE';
     if (!DIGNIDADES_CONFIG.includes(dig))
@@ -1191,7 +1191,7 @@ app.get('/juntas-correccion/:junta_id', requiereRol('superadmin'), async (req, r
 });
 
 // Corregir los votos de un acta (reemplaza las filas de la junta+dignidad)
-app.put('/juntas-correccion/:junta_id', requiereRol('superadmin'), async (req, res) => {
+app.put('/juntas-correccion/:junta_id', requiereRol('admin', 'superadmin'), async (req, res) => {
     const { junta_id } = req.params;
     const { dignidad, votos } = req.body;
     const dig = dignidad || 'ALCALDE';

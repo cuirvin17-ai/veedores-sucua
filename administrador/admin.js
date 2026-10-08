@@ -35,6 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rol === 'superadmin') {
         document.getElementById('menuCandidatos').style.display = 'flex';
         document.getElementById('menuConfiguracion').style.display = 'flex';
+    }
+    if (rol === 'superadmin' || rol === 'admin') {
         document.getElementById('menuCorreccion').style.display = 'flex';
     }
     }
@@ -299,7 +301,7 @@ function mostrarSeccion(nombre) {
 
     if (nombre === 'resultados')   cargarTodo();
     if (nombre === 'juntas')       cargarEstadoJuntas();
-    if (nombre === 'correccion')   { if (esSuperadmin()) cargarCorreccionJuntas(); }
+    if (nombre === 'correccion')   cargarCorreccionJuntas();
     if (nombre === 'actas')        cargarFotos();
     if (nombre === 'candidatos')   { if (esSuperadmin()) cargarCandidatosAdmin(); }
     if (nombre === 'configuracion') { if (esSuperadmin()) { cargarJuntasConfig(); cargarDatalists(); } }
@@ -1091,7 +1093,7 @@ function escAtr(s) {
 
 async function cargarCorreccionJuntas() {
     const tbody = document.getElementById('tablaCorreccion');
-    if (!tbody || !esSuperadmin()) return;
+    if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">'
         + '<i class="fas fa-circle-notch fa-spin"></i> Cargando...</td></tr>';
     cerrarCorreccion();
