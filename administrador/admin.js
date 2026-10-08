@@ -1224,18 +1224,19 @@ async function guardarCorreccion() {
 
     const btn = document.getElementById('btnGuardarCorreccion');
     btn.disabled = true;
+    const { junta_id, dignidad } = correccionActual;
     try {
-        const res = await fetch(`${API}/juntas-correccion/${correccionActual.junta_id}`, {
+        const res = await fetch(`${API}/juntas-correccion/${junta_id}`, {
             method: 'PUT',
             headers: getHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ dignidad: correccionActual.dignidad, votos })
+            body: JSON.stringify({ dignidad, votos })
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.message || 'No se pudo guardar');
 
         alert('✅ ' + (data.message || 'Acta corregida correctamente'));
         await cargarCorreccionJuntas();
-        await abrirCorreccion(correccionActual.junta_id, correccionActual.dignidad);
+        await abrirCorreccion(junta_id, dignidad);
     } catch (e) {
         alert('❌ ' + e.message);
     } finally {
