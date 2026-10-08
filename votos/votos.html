@@ -76,8 +76,9 @@
                         <button onclick="ajustar('NULO',-1)" class="btn-adj minus">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <input type="number" id="input_NULO" data-candidato="NULO"
-                               class="voto-input" value="0" min="0">
+                        <input type="text" id="input_NULO" data-candidato="NULO"
+                               class="voto-input" value="0"
+                               inputmode="numeric" pattern="[0-9]*" maxlength="6">
                         <button onclick="ajustar('NULO',1)" class="btn-adj plus">
                             <i class="fas fa-plus"></i>
                         </button>
@@ -96,8 +97,9 @@
                         <button onclick="ajustar('BLANCO',-1)" class="btn-adj minus">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <input type="number" id="input_BLANCO" data-candidato="BLANCO"
-                               class="voto-input" value="0" min="0">
+                        <input type="text" id="input_BLANCO" data-candidato="BLANCO"
+                               class="voto-input" value="0"
+                               inputmode="numeric" pattern="[0-9]*" maxlength="6">
                         <button onclick="ajustar('BLANCO',1)" class="btn-adj plus">
                             <i class="fas fa-plus"></i>
                         </button>

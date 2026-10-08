@@ -189,11 +189,12 @@ async function cargarCandidatos() {
                 <button onclick="ajustar('${safeKey}',-1)" class="btn-adj minus">
                     <i class="fas fa-minus"></i>
                 </button>
-                <input type="number"
+                <input type="text"
                        id="input_${safeKey}"
                        data-candidato="${c.nombre}"
                        class="voto-input"
-                       value="0" min="0"
+                       value="0"
+                       inputmode="numeric" pattern="[0-9]*" maxlength="6"
                        oninput="actualizarTotal()">
                 <button onclick="ajustar('${safeKey}',1)" class="btn-adj plus">
                     <i class="fas fa-plus"></i>
@@ -217,10 +218,10 @@ function ajustar(key, delta) {
 function actualizarTotal() {
     let total = 0;
     document.querySelectorAll('.voto-input').forEach(inp => {
-        let v = parseInt(inp.value, 10);
-        if (isNaN(v)) v = 0;
-        else if (v < 0) { v = 0; inp.value = '0'; }
-        total += v;
+        const limpio = String(inp.value).replace(/[^0-9]/g, '');
+        if (limpio !== inp.value) inp.value = limpio;
+        const v = parseInt(limpio, 10);
+        total += isNaN(v) ? 0 : v;
     });
     document.getElementById('totalVotos').textContent = total;
 }

@@ -1175,9 +1175,10 @@ async function abrirCorreccion(juntaId, dignidad) {
     <tr>
         <td>${etiqueta}</td>
         <td style="text-align:right;">
-            <input type="number" class="votos-input" min="0" step="1"
+            <input type="text" class="votos-input"
                    data-candidato="${escAtr(n)}"
                    value="${val ? Math.max(0, Number(val.votos) || 0) : 0}"
+                   inputmode="numeric" pattern="[0-9]*" maxlength="6"
                    oninput="actualizarTotalCorreccion()">
         </td>
     </tr>`;
@@ -1195,10 +1196,10 @@ async function abrirCorreccion(juntaId, dignidad) {
 function actualizarTotalCorreccion() {
     let t = 0;
     document.querySelectorAll('#tablaCorreccionForm .votos-input').forEach(i => {
-        let v = parseInt(i.value, 10);
-        if (isNaN(v)) v = 0;
-        else if (v < 0) { v = 0; i.value = '0'; }
-        t += v;
+        const limpio = String(i.value).replace(/[^0-9]/g, '');
+        if (limpio !== i.value) i.value = limpio;
+        const v = parseInt(limpio, 10);
+        t += isNaN(v) ? 0 : v;
     });
     const el = document.getElementById('correccionTotal');
     if (el) el.textContent = t;
