@@ -10,6 +10,7 @@ const elNombre = document.getElementById('nombreVeedor');
 if (elNombre) elNombre.textContent = nombre.charAt(0).toUpperCase() + nombre.slice(1);
 
 let dignidadSeleccionada = '';
+let estadoDignidades = null;
 
 const DIGNIDADES = [
     { clave: 'ALCALDE',              icono: 'fa-user-tie',   color: '#10b981', titulo: 'Alcalde o Alcaldesa',     desc: 'Votación para la alcaldía del cantón' },
@@ -40,8 +41,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     checkConexion();
-    renderDignidades();
     await cargarEstadoDignidades();
+    renderDignidades();
 });
 
 window.addEventListener('online', () => setTimeout(checkConexion, 500));
@@ -51,31 +52,29 @@ async function cargarEstadoDignidades() {
     try {
         const res = await fetch(`${API}/dignidades-estado`, { headers: getHeaders() });
         const data = await res.json();
-        if (data.success) {
-            data.dignidades.forEach(d => {
-                const btn = document.getElementById(`dignidad_${d.clave}`);
-                if (btn) {
-                    if (!d.habilitada) {
-                        btn.style.opacity = '0.5';
-                        btn.style.cursor = 'not-allowed';
-                        btn.title = 'Dignidad deshabilitada por el administrador';
-                        const check = btn.querySelector('.dignidad-btn-check');
-                        if (check) check.style.display = 'none';
-                        if (dignidadSeleccionada === d.clave) {
-                            dignidadSeleccionada = '';
-                            document.querySelectorAll('.dignidad-btn').forEach(b => b.classList.remove('selected'));
-                            document.getElementById('btnContinuar').disabled = true;
-                        }
-                    }
-                }
-            });
+        if (data.success && Array.isArray(data.dignidades)) {
+            estadoDignidades = data.dignidades;
         }
-    } catch (e) { /* sin servidor */ }
+    } catch (e) { /* sin servidor: se muestran todas */ }
+}
+
+function esDignidadHabilitada(clave) {
+    const estado = (estadoDignidades || []).find(d => d.clave === clave);
+    return estado ? Number(estado.habilitada) === 1 : true;
 }
 
 function renderDignidades() {
     const lista = document.getElementById('dignidadLista');
-    lista.innerHTML = DIGNIDADES.map(d => `
+    const visibles = DIGNIDADES.filter(d => esDignidadHabilitada(d.clave));
+
+    if (visibles.length === 0) {
+        lista.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#64748b;font-weight:600;padding:24px;">No hay dignidades habilitadas en este momento. Contacte al administrador.</p>';
+        const btn = document.getElementById('btnContinuar');
+        if (btn) btn.disabled = true;
+        return;
+    }
+
+    lista.innerHTML = visibles.map(d => `
         <button class="dignidad-btn" id="dignidad_${d.clave}" onclick="seleccionar('${d.clave}')">
             <span class="dignidad-btn-icon" style="background:linear-gradient(135deg, ${d.color}, ${d.color}dd);">
                 <i class="fas ${d.icono}"></i>
@@ -91,7 +90,7 @@ function renderDignidades() {
 
 function seleccionar(clave) {
     const btn = document.getElementById(`dignidad_${clave}`);
-    if (!btn || btn.style.opacity === '0.5') return;
+    if (!btn || !esDignidadHabilitada(clave)) return;
 
     document.querySelectorAll('.dignidad-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');

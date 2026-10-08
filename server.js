@@ -917,6 +917,14 @@ app.post('/registrar-resultados', async (req, res) => {
         });
     }
 
+    if (!(await estaDignidadHabilitada(dig))) {
+        return res.status(403).json({
+            success: false,
+            codigo: 'DIGNIDAD_DESHABILITADA',
+            message: 'Esta dignidad está deshabilitada. No se pueden registrar resultados.'
+        });
+    }
+
     if (!junta_id || !id_veedor || !Array.isArray(votos) || votos.length === 0)
         return res.status(400).json({ success: false, message: 'Datos incompletos' });
 

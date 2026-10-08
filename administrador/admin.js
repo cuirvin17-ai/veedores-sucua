@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         verificarBloqueoPanelAdmin();
     }, REFRESH_INTERVAL_MS);
     async function inicializar() {
+    await aplicarFiltrosDignidades();
     await cargarFiltroParroquias();
     await cargarTodo();
     const rol = localStorage.getItem('rolUsuario');
@@ -145,6 +146,45 @@ const DIGNIDADES_LIST = [
     { clave: 'JUNTAS_PARROQUIALES',  label: 'Juntas Parroquiales',     icono: 'fa-people-group' },
 ];
 
+async function aplicarFiltrosDignidades() {
+    let habilitadas;
+    try {
+        const res  = await fetch(`${API}/dignidades-estado`, { headers: getHeaders() });
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.dignidades)) return;
+        habilitadas = new Set(data.dignidades.filter(d => Number(d.habilitada) === 1).map(d => d.clave));
+    } catch (e) { return; }
+
+    const LABELS = {
+        ALCALDE: 'Alcalde',
+        CONCEJALES_URBANOS: 'Concejales Urbanos',
+        CONCEJALES_RURALES: 'Concejales Rurales',
+        JUNTAS_PARROQUIALES: 'Juntas Parroquiales'
+    };
+
+    const reconstruir = (id, incluirTodas) => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const actual = sel.value;
+        const claves = DIGNIDADES_LIST.map(d => d.clave).filter(c => habilitadas.has(c));
+        sel.innerHTML = '';
+        if (incluirTodas) sel.appendChild(new Option('Todas las dignidades', ''));
+        if (claves.length === 0) {
+            sel.appendChild(new Option('Sin dignidades habilitadas', ''));
+            sel.disabled = true;
+            return;
+        }
+        sel.disabled = false;
+        claves.forEach(c => sel.appendChild(new Option(LABELS[c] || c, c)));
+        if (claves.includes(actual)) sel.value = actual;
+    };
+
+    reconstruir('filtroDignidad', false);
+    reconstruir('filtroDignidadCandidatos', false);
+    reconstruir('configDignidad', false);
+    reconstruir('configFiltroDignidad', true);
+}
+
 async function cargarEstadoDignidades() {
     if (!esSuperadmin()) return;
     const panel = document.getElementById('panelDignidades');
@@ -193,6 +233,9 @@ async function toggleDignidad(clave, habilitada) {
         if (!data.success) {
             alert('Error: ' + (data.message || 'No se pudo cambiar el estado'));
             await cargarEstadoDignidades();
+        } else {
+            await aplicarFiltrosDignidades();
+            refrescarSeccionActiva();
         }
     } catch (e) {
         alert('Error de conexión');
