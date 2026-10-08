@@ -180,6 +180,7 @@ async function cargarCandidatos() {
         <div class="voto-item">
             <div class="voto-info">
                 <div class="voto-icono" style="background:${clr.bg};color:${clr.color};">${i + 1}</div>
+                ${c.foto ? `<img class="voto-foto" src="${String(c.foto).replace(/"/g, '&quot;')}" alt="">` : ''}
                 <div>
                     <div class="voto-nombre">${c.nombre}</div>
                     <div class="voto-partido">${c.partido || 'Sin partido'}</div>

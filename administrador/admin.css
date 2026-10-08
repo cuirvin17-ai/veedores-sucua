@@ -1758,3 +1758,66 @@ body {
     color: #94a3b8;
     padding: 24px;
 }
+
+/* -- CANDIDATOS: FOTO Y EDICIÓN ------------------------------- */
+.cand-foto {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e2e8f0;
+    display: block;
+    background: #f1f5f9;
+}
+
+.cand-sin-foto {
+    color: #94a3b8;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.cand-edit-row { background: #f8fafc; }
+.cand-edit-row td { vertical-align: middle; }
+
+.cand-input {
+    width: 100%;
+    min-width: 90px;
+    padding: 7px 9px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #fff;
+}
+
+.cand-input--ancho { min-width: 170px; }
+
+.cand-input:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.cand-foto-edit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-mini-foto {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+}
+
+.btn-mini-foto:hover { border-color: #8b5cf6; color: #7c3aed; }
+.btn-mini-quitar:hover { border-color: #ef4444; color: #dc2626; }

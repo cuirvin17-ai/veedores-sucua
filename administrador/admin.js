@@ -749,42 +749,182 @@ async function eliminarFoto(juntaId, nombre) {
     } catch (e) { alert('Error de red al eliminar la foto.'); }
 }
 
+let candidatosCacheAdmin = [];
+let editandoCandidato = null;   // id del candidato en edición
+let fotoEditTmp = undefined;    // undefined = sin cambio | null = quitar | string = nueva foto
+
 async function cargarCandidatosAdmin() {
     const tbody = document.getElementById('tablaCandidatosAdmin');
     if (!tbody) return;
     const dignidadFiltro = document.getElementById('filtroDignidadCandidatos')?.value || 'ALCALDE';
 
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;">
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">
         <i class="fas fa-circle-notch fa-spin"></i> Cargando...
     </td></tr>`;
 
     try {
         const res   = await fetch(`${API}/candidatos?dignidad=${encodeURIComponent(dignidadFiltro)}`, { headers: getHeaders() });
         const datos = await res.json();
-
-        const DIGNIDAD_NOMBRES = {
-            ALCALDE: 'Alcalde',
-            CONCEJALES_URBANOS: 'Concejales Urbanos',
-            CONCEJALES_RURALES: 'Concejales Rurales',
-            JUNTAS_PARROQUIALES: 'Juntas Parroquiales',
-        };
-
-        tbody.innerHTML = datos.length === 0
-            ? `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;">No hay candidatos</td></tr>`
-            : datos.map(c => `<tr>
-                <td style="color:#94a3b8;">${c.orden || '—'}</td>
-                <td><strong>${c.nombre}</strong></td>
-                <td style="color:#64748b;">${c.partido || '—'}</td>
-                <td style="color:#64748b;font-size:0.82rem;">${DIGNIDAD_NOMBRES[c.dignidad] || c.dignidad || '—'}</td>
-                <td>
-                    <button class="btn-eliminar" onclick="eliminarCandidato(${c.id},'${c.nombre.replace(/'/g,"\\'")}')">
-                        <i class="fas fa-trash-alt"></i> Eliminar
-                    </button>
-                </td>
-            </tr>`).join('');
-
+        candidatosCacheAdmin = Array.isArray(datos) ? datos : [];
+        renderCandidatosTabla();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ef4444;padding:20px;"> Error de conexión</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#ef4444;padding:20px;"> Error de conexión</td></tr>`;
+    }
+}
+
+const DIGNIDAD_NOMBRES_CAND = {
+    ALCALDE: 'Alcalde',
+    CONCEJALES_URBANOS: 'Concejales Urbanos',
+    CONCEJALES_RURALES: 'Concejales Rurales',
+    JUNTAS_PARROQUIALES: 'Juntas Parroquiales',
+};
+
+function renderCandidatosTabla() {
+    const tbody = document.getElementById('tablaCandidatosAdmin');
+    if (!tbody) return;
+    const datos = candidatosCacheAdmin;
+
+    tbody.innerHTML = datos.length === 0
+        ? `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">No hay candidatos</td></tr>`
+        : datos.map(c => Number(editandoCandidato) === Number(c.id)
+            ? filaEdicionCandidato(c)
+            : filaCandidato(c)).join('');
+}
+
+function filaCandidato(c) {
+    const dn = DIGNIDAD_NOMBRES_CAND;
+    return `<tr>
+        <td style="color:#94a3b8;">${c.orden || '—'}</td>
+        <td><strong>${c.nombre}</strong></td>
+        <td style="color:#64748b;">${c.partido || '—'}</td>
+        <td style="color:#64748b;font-size:0.82rem;">${dn[c.dignidad] || c.dignidad || '—'}</td>
+        <td>${c.foto
+            ? `<img class="cand-foto" src="${c.foto}" alt="Foto de ${escAtr(c.nombre)}">`
+            : '<span class="cand-sin-foto">Sin foto</span>'}</td>
+        <td>
+            <button class="btn-agregar" onclick="editarCandidato(${Number(c.id)})">
+                <i class="fas fa-pen"></i> Editar
+            </button>
+            <button class="btn-eliminar" onclick="eliminarCandidato(${c.id},'${c.nombre.replace(/'/g, "\\'")}')">
+                <i class="fas fa-trash-alt"></i> Eliminar
+            </button>
+        </td>
+    </tr>`;
+}
+
+function filaEdicionCandidato(c) {
+    const dn = DIGNIDAD_NOMBRES_CAND;
+    const fotoActual = fotoEditTmp !== undefined ? fotoEditTmp : (c.foto || null);
+    return `<tr class="cand-edit-row">
+        <td><input type="number" id="editOrdenCand" min="0" max="9999" value="${c.orden || 0}" class="cand-input"></td>
+        <td><input type="text" id="editNombreCand" value="${escAtr(c.nombre)}" maxlength="150" class="cand-input cand-input--ancho"></td>
+        <td><input type="text" id="editPartidoCand" value="${escAtr(c.partido || '')}" maxlength="150" class="cand-input"></td>
+        <td style="color:#64748b;font-size:0.82rem;">${dn[c.dignidad] || c.dignidad || '—'}</td>
+        <td>
+            <div class="cand-foto-edit">
+                <div id="editFotoPreview">${fotoActual
+                    ? `<img class="cand-foto" src="${fotoActual}">`
+                    : '<span class="cand-sin-foto">Sin foto</span>'}</div>
+                <label class="btn-mini-foto" title="Subir foto">
+                    <i class="fas fa-camera"></i> Foto
+                    <input type="file" accept="image/*" style="display:none;"
+                           onchange="seleccionarFotoCandidato(this)">
+                </label>
+                <button type="button" class="btn-mini-foto btn-mini-quitar" onclick="quitarFotoCandidato()"
+                        title="Quitar foto"><i class="fas fa-times"></i></button>
+            </div>
+        </td>
+        <td>
+            <button class="btn-agregar" onclick="guardarCandidato()">
+                <i class="fas fa-save"></i> Guardar
+            </button>
+            <button class="btn-refresh" onclick="cancelarEdicionCandidato()">Cancelar</button>
+        </td>
+    </tr>`;
+}
+
+function editarCandidato(id) {
+    editandoCandidato = Number(id);
+    fotoEditTmp = undefined;
+    renderCandidatosTabla();
+    document.getElementById('editNombreCand')?.focus();
+}
+
+function cancelarEdicionCandidato() {
+    editandoCandidato = null;
+    fotoEditTmp = undefined;
+    renderCandidatosTabla();
+}
+
+function redimensionarFoto(file, maxLado = 240) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            let w = img.naturalWidth, h = img.naturalHeight;
+            const escala = Math.min(1, maxLado / Math.max(w, h));
+            w = Math.max(1, Math.round(w * escala));
+            h = Math.max(1, Math.round(h * escala));
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen')); };
+        img.src = url;
+    });
+}
+
+async function seleccionarFotoCandidato(input) {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { alert('Seleccione un archivo de imagen'); return; }
+    try {
+        fotoEditTmp = await redimensionarFoto(f);
+        pintarPreviewFotoEdit();
+    } catch (e) { alert('❌ ' + e.message); }
+    input.value = '';
+}
+
+function quitarFotoCandidato() {
+    fotoEditTmp = null;
+    pintarPreviewFotoEdit();
+}
+
+function pintarPreviewFotoEdit() {
+    const el = document.getElementById('editFotoPreview');
+    if (!el) return;
+    const c = candidatosCacheAdmin.find(x => Number(x.id) === Number(editandoCandidato));
+    const fotoActual = fotoEditTmp !== undefined ? fotoEditTmp : (c ? c.foto : null);
+    el.innerHTML = fotoActual
+        ? `<img class="cand-foto" src="${fotoActual}">`
+        : '<span class="cand-sin-foto">Sin foto</span>';
+}
+
+async function guardarCandidato() {
+    if (!editandoCandidato) return;
+    const nombre  = (document.getElementById('editNombreCand')?.value || '').trim();
+    const partido = (document.getElementById('editPartidoCand')?.value || '').trim();
+    const orden   = document.getElementById('editOrdenCand')?.value;
+    if (!nombre) { alert('El nombre del candidato es requerido.'); return; }
+
+    const body = { nombre, partido, orden: parseInt(orden, 10) || 0 };
+    if (fotoEditTmp !== undefined) body.foto = fotoEditTmp;
+
+    try {
+        const res  = await fetch(`${API}/candidatos/${editandoCandidato}`, {
+            method: 'PUT',
+            headers: getHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'No se pudo guardar');
+        editandoCandidato = null;
+        fotoEditTmp = undefined;
+        await cargarCandidatosAdmin();
+    } catch (e) {
+        alert('❌ ' + e.message);
     }
 }
 

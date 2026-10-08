@@ -184,6 +184,7 @@ if (DATABASE_URL) {
         initSistemaConfig();
         initDignidadesConfig();
         initAsignacionesJuntas();
+        initFotoCandidatos();
         console.log('✅ PostgreSQL conectado y tablas inicializadas');
     }).catch(err => console.error('❌ PostgreSQL:', err.message));
 } else {
@@ -214,6 +215,7 @@ if (DATABASE_URL) {
             initDignidadesConfig();
             asegurarColumnasDignidad();
             initAsignacionesJuntas();
+            initFotoCandidatos();
         }
     });
 }
@@ -288,6 +290,25 @@ async function juntasAsignadasDeSesion(req) {
     } catch (err) {
         console.error('❌ Error leyendo asignaciones:', err.message);
         return [];
+    }
+}
+
+// Fotos de candidatos (base64 en BD)
+async function initFotoCandidatos() {
+    try {
+        if (isPostgres) {
+            await db.execute('ALTER TABLE candidatos ADD COLUMN IF NOT EXISTS foto TEXT');
+            return;
+        }
+        const [cols] = await db.execute(
+            "SELECT COUNT(*) AS existe FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'candidatos' AND COLUMN_NAME = 'foto'"
+        );
+        if (!Number(cols[0].existe)) {
+            await db.execute('ALTER TABLE candidatos ADD COLUMN foto MEDIUMTEXT NULL');
+            console.log('✅ Columna foto agregada en candidatos');
+        }
+    } catch (err) {
+        console.error('⚠️ Error verificando columna foto candidatos:', err.message);
     }
 }
 
@@ -814,7 +835,7 @@ app.delete('/admin/juntas/:id', requiereRol('superadmin'), async (req, res) => {
 app.get('/candidatos', async (req, res) => {
     const { dignidad } = req.query;
     try {
-        let sql = 'SELECT id, dignidad, nombre, partido, orden FROM candidatos';
+        let sql = 'SELECT id, dignidad, nombre, partido, orden, foto FROM candidatos';
         const params = [];
         if (dignidad) { sql += ' WHERE dignidad=?'; params.push(dignidad); }
         sql += ' ORDER BY orden ASC, nombre ASC';
@@ -835,6 +856,56 @@ app.post('/candidatos', requiereRol('superadmin'), async (req, res) => {
             [dig, nombre, partido || '', orden || 0]
         );
         res.json({ success: true, id: result.insertId });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// Editar candidato (nombre, partido, orden y/o foto en base64)
+app.put('/candidatos/:id', requiereRol('superadmin'), async (req, res) => {
+    const { nombre, partido, orden, foto } = req.body;
+    try {
+        const [cand] = await db.execute('SELECT id FROM candidatos WHERE id=?', [req.params.id]);
+        if (!cand.length)
+            return res.status(404).json({ success: false, message: 'Candidato no encontrado' });
+
+        const campos = [], params = [];
+
+        if (nombre !== undefined) {
+            if (typeof nombre !== 'string' || !nombre.trim() || nombre.trim().length > 150)
+                return res.status(400).json({ success: false, message: 'Nombre inválido' });
+            campos.push('nombre=?'); params.push(nombre.trim());
+        }
+        if (partido !== undefined) {
+            if (typeof partido !== 'string' || partido.length > 150)
+                return res.status(400).json({ success: false, message: 'Partido inválido' });
+            campos.push('partido=?'); params.push(partido.trim());
+        }
+        if (orden !== undefined) {
+            const o = parseInt(orden, 10);
+            if (isNaN(o) || o < 0 || o > 9999)
+                return res.status(400).json({ success: false, message: 'Orden inválido' });
+            campos.push('orden=?'); params.push(o);
+        }
+        if (foto !== undefined) {
+            if (foto === null || foto === '') {
+                campos.push('foto=?'); params.push(null);
+            } else if (typeof foto === 'string'
+                && /^data:image\/(jpeg|jpg|png|webp|gif);base64,/i.test(foto)
+                && foto.length <= 600000) {
+                const bin = Buffer.from(foto.split(',')[1], 'base64');
+                if (!bin.length)
+                    return res.status(400).json({ success: false, message: 'Foto inválida' });
+                campos.push('foto=?'); params.push(foto);
+            } else {
+                return res.status(400).json({ success: false, message: 'Foto inválida (imagen base64 de máximo 450KB)' });
+            }
+        }
+
+        if (!campos.length)
+            return res.status(400).json({ success: false, message: 'Nada que actualizar' });
+
+        params.push(req.params.id);
+        await db.execute(`UPDATE candidatos SET ${campos.join(', ')} WHERE id=?`, params);
+        res.json({ success: true, message: 'Candidato actualizado' });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 

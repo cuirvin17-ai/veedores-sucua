@@ -155,6 +155,15 @@ body {
     color:#065f46;
 }
 
+.voto-foto {
+    width:46px; height:46px;
+    border-radius:50%;
+    object-fit:cover;
+    border:2px solid #e2e8f0;
+    flex-shrink:0;
+    background:#f1f5f9;
+}
+
 .voto-nombre { font-weight:700; color:#0f172a; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .voto-partido { font-size:0.76rem; color:#64748b; margin-top:2px; }
 
