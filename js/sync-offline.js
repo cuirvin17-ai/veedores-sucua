@@ -92,6 +92,10 @@
                     detener = true;
                     continue;
                 }
+                if (data.codigo === 'JUNTA_NO_ASIGNADA') {
+                    toast('⛔ Junta no asignada: el acta fue descartada. Contacte al administrador.', '#ef4444');
+                    continue;
+                }
 
                 const yaRegistrada = data.success === true || data.yaRegistrada === true ||
                     /ya tiene resultados|ya fue registrada/i.test(data.message || '');

@@ -136,7 +136,10 @@ async function cargarParroquias() {
     sel.innerHTML = '<option value="">— Seleccione parroquia —</option>';
 
     if (!datos || !datos.length) {
-        sel.innerHTML += '<option disabled>Sin datos disponibles offline</option>';
+        const online = navigator.onLine && datos !== null;
+        sel.innerHTML += online
+            ? '<option disabled>Sin juntas asignadas. Contacte al administrador</option>'
+            : '<option disabled>Sin datos disponibles offline</option>';
         return;
     }
 

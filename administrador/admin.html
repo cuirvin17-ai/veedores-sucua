@@ -57,6 +57,11 @@
                style="display:none;">
                 <i class="fas fa-file-pen"></i> <span>Corrección de Juntas</span>
             </a>
+            <a href="javascript:void(0)" id="menuAsignacion"
+               onclick="mostrarSeccion('asignacion')" class="menu-item"
+               style="display:none;">
+                <i class="fas fa-user-check"></i> <span>Asignar Juntas</span>
+            </a>
             <a href="javascript:void(0)" id="menuActas"
                onclick="mostrarSeccion('actas')" class="menu-item">
                 <i class="fas fa-camera"></i> <span>Fotos de Actas</span>
@@ -349,6 +354,70 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ASIGNAR JUNTAS A VEEDORES -->
+        <div id="seccionAsignacion" class="seccion-panel">
+            <header class="page-header">
+                <div>
+                    <h1>Asignar Juntas</h1>
+                    <p class="header-sub">Define qué junta receptora debe ingresar cada veedor (solo verá sus juntas asignadas)</p>
+                </div>
+                <button onclick="cargarAsignacionJuntas()" class="btn-refresh">
+                    <i class="fas fa-sync"></i> Actualizar
+                </button>
+            </header>
+
+            <div class="stats-card">
+                <h3 style="margin-bottom:16px;"><i class="fas fa-users"></i> Veedores</h3>
+                <div style="overflow-x:auto;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Veedor</th><th>Cédula</th><th>Juntas asignadas</th><th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaAsignacion">
+                            <tr><td colspan="4" style="text-align:center;color:#94a3b8;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="panelAsignacionDetalle" class="stats-card" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+                    <h3 id="tituloAsignacion" style="margin:0;"><i class="fas fa-user-check"></i> Asignar juntas</h3>
+                    <button onclick="cerrarAsignacion()" class="btn-refresh">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                </div>
+
+                <div class="asign-toolbar">
+                    <select id="asignFiltroParroquia" onchange="renderJuntasAsignacion()">
+                        <option value="todas">Todas las parroquias</option>
+                    </select>
+                    <select id="asignFiltroZona" onchange="renderJuntasAsignacion()">
+                        <option value="todas">Todas las zonas</option>
+                    </select>
+                    <span id="asignContador" class="asign-badge">0 seleccionadas</span>
+                    <div class="asign-toolbar-actions">
+                        <button type="button" class="btn-refresh" onclick="seleccionarJuntasFiltradas(true)">
+                            <i class="fas fa-check-double"></i> Marcar filtradas
+                        </button>
+                        <button type="button" class="btn-refresh" onclick="seleccionarJuntasFiltradas(false)">
+                            <i class="fas fa-eraser"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <div id="listaJuntasAsignacion" class="asign-grid"></div>
+
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                    <button id="btnGuardarAsignacion" onclick="guardarAsignacion()" class="btn-agregar">
+                        <i class="fas fa-save"></i> Guardar asignación
+                    </button>
                 </div>
             </div>
         </div>

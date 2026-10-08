@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (rol === 'superadmin' || rol === 'admin') {
         document.getElementById('menuCorreccion').style.display = 'flex';
+        document.getElementById('menuAsignacion').style.display = 'flex';
     }
     }
 });
@@ -302,6 +303,7 @@ function mostrarSeccion(nombre) {
     if (nombre === 'resultados')   cargarTodo();
     if (nombre === 'juntas')       cargarEstadoJuntas();
     if (nombre === 'correccion')   cargarCorreccionJuntas();
+    if (nombre === 'asignacion')   cargarAsignacionJuntas();
     if (nombre === 'actas')        cargarFotos();
     if (nombre === 'candidatos')   { if (esSuperadmin()) cargarCandidatosAdmin(); }
     if (nombre === 'configuracion') { if (esSuperadmin()) { cargarJuntasConfig(); cargarDatalists(); } }
@@ -1241,6 +1243,173 @@ async function guardarCorreccion() {
         alert('✅ ' + (data.message || 'Acta corregida correctamente'));
         await cargarCorreccionJuntas();
         await abrirCorreccion(junta_id, dignidad);
+    } catch (e) {
+        alert('❌ ' + e.message);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ── ASIGNACIÓN DE JUNTAS A VEEDORES ────────────────────────────────────
+let asignVeedores = [], asignJuntas = [], asignActual = null;
+let asignSel = new Set();
+
+async function cargarAsignacionJuntas() {
+    const tbody = document.getElementById('tablaAsignacion');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">'
+        + '<i class="fas fa-circle-notch fa-spin"></i> Cargando...</td></tr>';
+    cerrarAsignacion();
+
+    try {
+        const res = await fetch(`${API}/asignaciones`, { headers: getHeaders() });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'No se pudo cargar');
+
+        asignVeedores = data.veedores || [];
+        asignJuntas   = data.juntas   || [];
+        renderTablaAsignacion();
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#ef4444;">'
+            + 'Error al cargar: ' + escAtr(e.message) + '</td></tr>';
+    }
+}
+
+function renderTablaAsignacion() {
+    const tbody = document.getElementById('tablaAsignacion');
+    if (!tbody) return;
+    tbody.innerHTML = asignVeedores.length === 0
+        ? '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Sin veedores registrados</td></tr>'
+        : asignVeedores.map(v => `
+    <tr>
+        <td style="font-weight:700;">${escAtr(v.usuario)}</td>
+        <td>${escAtr(v.cedula || '—')}</td>
+        <td>${v.juntas.length === 0
+            ? '<span class="asign-badge asign-badge--vacia">Sin asignar</span>'
+            : `<span class="asign-badge">${v.juntas.length} junta(s)</span>`}</td>
+        <td><button class="btn-agregar" onclick="abrirAsignacion(${Number(v.id)})">
+                <i class="fas fa-user-check"></i> Asignar
+            </button></td>
+    </tr>`).join('');
+}
+
+function juntaEtiqueta(j) {
+    const dig = j.dignidad ? ` — ${DIG_NOMBRES[j.dignidad] || j.dignidad}` : '';
+    return `${j.parroquia} · ${j.zona} · Junta ${j.numero_junta}${dig}`;
+}
+
+function cargarOpcionesFiltrosAsign() {
+    const parroquias = [...new Set(asignJuntas.map(j => j.parroquia))].sort();
+    const zonas      = [...new Set(asignJuntas.map(j => j.zona))].sort();
+    const selP = document.getElementById('asignFiltroParroquia');
+    const selZ = document.getElementById('asignFiltroZona');
+    const prevP = selP.value, prevZ = selZ.value;
+    selP.innerHTML = '<option value="todas">Todas las parroquias</option>'
+        + parroquias.map(p => `<option value="${escAtr(p)}">${escAtr(p)}</option>`).join('');
+    selZ.innerHTML = '<option value="todas">Todas las zonas</option>'
+        + zonas.map(z => `<option value="${escAtr(z)}">${escAtr(z)}</option>`).join('');
+    if (parroquias.includes(prevP)) selP.value = prevP;
+    if (zonas.includes(prevZ)) selZ.value = prevZ;
+}
+
+function juntasFiltradasAsign() {
+    const p = document.getElementById('asignFiltroParroquia').value;
+    const z = document.getElementById('asignFiltroZona').value;
+    return asignJuntas.filter(j =>
+        (p === 'todas' || j.parroquia === p) && (z === 'todas' || j.zona === z));
+}
+
+function abrirAsignacion(id) {
+    const v = asignVeedores.find(x => Number(x.id) === Number(id));
+    if (!v) return;
+    asignActual = { id: v.id, usuario: v.usuario };
+    asignSel = new Set((v.juntas || []).map(Number));
+
+    document.getElementById('tituloAsignacion').innerHTML =
+        `<i class="fas fa-user-check"></i> ${escAtr(v.usuario)} — seleccione la(s) junta(s) que registrará`;
+    cargarOpcionesFiltrosAsign();
+    renderJuntasAsignacion();
+
+    const panel = document.getElementById('panelAsignacionDetalle');
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderJuntasAsignacion() {
+    const cont = document.getElementById('listaJuntasAsignacion');
+    if (!cont) return;
+    const lista = juntasFiltradasAsign();
+    cont.innerHTML = lista.length === 0
+        ? '<p class="asign-vacio">Sin juntas para este filtro</p>'
+        : lista.map(j => {
+            const marcada = asignSel.has(Number(j.id));
+            return `
+        <label class="asign-junta-item${marcada ? ' seleccionada' : ''}" data-junta="${Number(j.id)}">
+            <input type="checkbox" ${marcada ? 'checked' : ''}
+                   onchange="toggleAsignJunta(${Number(j.id)}, this.checked)">
+            <span class="asign-junta-text">
+                <b>Junta ${escAtr(j.numero_junta)}</b>
+                <span>${escAtr(j.parroquia)} · ${escAtr(j.zona)}</span>
+                ${j.dignidad ? `<small>${DIG_NOMBRES[j.dignidad] || escAtr(j.dignidad)}</small>` : ''}
+            </span>
+        </label>`;
+        }).join('');
+    actualizarContadorAsign();
+}
+
+function toggleAsignJunta(juntaId, marcada) {
+    if (marcada) asignSel.add(Number(juntaId));
+    else asignSel.delete(Number(juntaId));
+    const item = document.querySelector(`#listaJuntasAsignacion .asign-junta-item[data-junta="${juntaId}"]`);
+    if (item) item.classList.toggle('seleccionada', marcada);
+    actualizarContadorAsign();
+}
+
+function seleccionarJuntasFiltradas(marcar) {
+    juntasFiltradasAsign().forEach(j => {
+        if (marcar) asignSel.add(Number(j.id));
+        else asignSel.delete(Number(j.id));
+    });
+    renderJuntasAsignacion();
+}
+
+function actualizarContadorAsign() {
+    const el = document.getElementById('asignContador');
+    if (el) el.textContent = `${asignSel.size} seleccionada(s)`;
+}
+
+function cerrarAsignacion() {
+    const panel = document.getElementById('panelAsignacionDetalle');
+    if (panel) panel.style.display = 'none';
+    asignActual = null;
+    asignSel = new Set();
+}
+
+async function guardarAsignacion() {
+    if (!asignActual) return;
+    const ids = [...asignSel];
+    const donde = `¿Guardar la asignación de ${ids.length} junta(s) para "${asignActual.usuario}"?\n\n`
+        + (ids.length
+            ? ids.map(id => {
+                const j = asignJuntas.find(x => Number(x.id) === Number(id));
+                return j ? '• ' + juntaEtiqueta(j) : '';
+              }).filter(Boolean).join('\n')
+            : 'Sin juntas: el veedor no verá ninguna junta hasta que se le asigne.');
+    if (!confirm(donde)) return;
+
+    const btn = document.getElementById('btnGuardarAsignacion');
+    btn.disabled = true;
+    const { id } = asignActual;
+    try {
+        const res = await fetch(`${API}/asignaciones/${id}`, {
+            method: 'PUT',
+            headers: getHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ juntas: ids })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'No se pudo guardar');
+        alert('✅ ' + (data.message || 'Asignación guardada'));
+        await cargarAsignacionJuntas();
     } catch (e) {
         alert('❌ ' + e.message);
     } finally {

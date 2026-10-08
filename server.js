@@ -183,6 +183,7 @@ if (DATABASE_URL) {
     pgPool.query('SELECT 1').then(() => {
         initSistemaConfig();
         initDignidadesConfig();
+        initAsignacionesJuntas();
         console.log('✅ PostgreSQL conectado y tablas inicializadas');
     }).catch(err => console.error('❌ PostgreSQL:', err.message));
 } else {
@@ -212,6 +213,7 @@ if (DATABASE_URL) {
             asegurarColumnaPassword();
             initDignidadesConfig();
             asegurarColumnasDignidad();
+            initAsignacionesJuntas();
         }
     });
 }
@@ -239,6 +241,53 @@ async function initSistemaConfig() {
         }
     } catch (err) {
         console.error('❌ Error init sistema_config:', err.message);
+    }
+}
+
+// ── ASIGNACIONES VEEDOR → JUNTA ────────────────────────────────────────
+async function initAsignacionesJuntas() {
+    try {
+        if (isPostgres) {
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS asignaciones_juntas (
+                    id SERIAL PRIMARY KEY,
+                    id_veedor INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                    junta_id INT NOT NULL REFERENCES juntas(id) ON DELETE CASCADE,
+                    fecha_asignacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (id_veedor, junta_id)
+                )
+            `);
+            return;
+        }
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS asignaciones_juntas (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                id_veedor INT NOT NULL,
+                junta_id INT NOT NULL,
+                fecha_asignacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_asig_veedor_junta (id_veedor, junta_id),
+                KEY idx_asig_junta (junta_id),
+                CONSTRAINT fk_asig_veedor FOREIGN KEY (id_veedor) REFERENCES usuarios(id) ON DELETE CASCADE,
+                CONSTRAINT fk_asig_junta FOREIGN KEY (junta_id) REFERENCES juntas(id) ON DELETE CASCADE
+            )
+        `);
+    } catch (err) {
+        console.error('❌ Error init asignaciones_juntas:', err.message);
+    }
+}
+
+// IDs de juntas asignados al veedor de la sesión; null si el rol no es veedor.
+async function juntasAsignadasDeSesion(req) {
+    const u = req.auth?.user;
+    if (!u || u.rol !== 'veedor') return null;
+    try {
+        const [rows] = await db.execute(
+            'SELECT junta_id FROM asignaciones_juntas WHERE id_veedor=?', [u.id]
+        );
+        return rows.map(r => Number(r.junta_id));
+    } catch (err) {
+        console.error('❌ Error leyendo asignaciones:', err.message);
+        return [];
     }
 }
 
@@ -445,7 +494,7 @@ const rutasProtegidas = [
     '/estadisticas-junta', '/juntas-pendientes', '/descargar-excel',
     '/descargar-fotos-actas', '/parroquias-disponibles', '/zonas-disponibles',
     '/subir-foto', '/registrar-resultados', '/resultados', '/junta-registrada',
-    '/juntas-correccion', '/admin'
+    '/juntas-correccion', '/admin', '/parroquias', '/zonas', '/juntas', '/asignaciones'
 ];
 app.use(rutasProtegidas, autenticarSesion);
 
@@ -457,7 +506,8 @@ const apiNoStore = [
     '/descargar-excel', '/descargar-fotos-actas',
     '/candidatos', '/todas-fotos', '/foto-acta', '/subir-foto',
     '/registrar-resultados', '/resultados', '/juntas-correccion',
-    '/parroquias-disponibles', '/zonas-disponibles', '/junta-registrada'
+    '/parroquias-disponibles', '/zonas-disponibles', '/junta-registrada',
+    '/asignaciones'
 ];
 app.use(apiNoStore, noStore);
 
@@ -648,9 +698,15 @@ app.post('/dignidades-estado/:clave', autenticarSesion, requiereRol('superadmin'
 app.get('/parroquias', async (req, res) => {
     const { dignidad } = req.query;
     try {
-        let sql = 'SELECT DISTINCT parroquia FROM juntas';
+        let sql = 'SELECT DISTINCT parroquia FROM juntas WHERE 1=1';
         const params = [];
-        if (dignidad) { sql += ' WHERE dignidad=? OR dignidad IS NULL'; params.push(dignidad); }
+        if (dignidad) { sql += ' AND (dignidad=? OR dignidad IS NULL)'; params.push(dignidad); }
+        const asignadas = await juntasAsignadasDeSesion(req);
+        if (asignadas !== null) {
+            if (asignadas.length === 0) return res.json([]);
+            sql += ` AND id IN (${asignadas.map(() => '?').join(',')})`;
+            params.push(...asignadas);
+        }
         sql += ' ORDER BY parroquia ASC';
         const [rows] = await db.execute(sql, params);
         res.json(rows);
@@ -664,6 +720,12 @@ app.get('/zonas', async (req, res) => {
         let sql = 'SELECT DISTINCT zona FROM juntas WHERE parroquia=?';
         const params = [parroquia];
         if (dignidad) { sql += ' AND (dignidad=? OR dignidad IS NULL)'; params.push(dignidad); }
+        const asignadas = await juntasAsignadasDeSesion(req);
+        if (asignadas !== null) {
+            if (asignadas.length === 0) return res.json([]);
+            sql += ` AND id IN (${asignadas.map(() => '?').join(',')})`;
+            params.push(...asignadas);
+        }
         sql += ' ORDER BY zona ASC';
         const [rows] = await db.execute(sql, params);
         res.json(rows);
@@ -677,6 +739,12 @@ app.get('/juntas', async (req, res) => {
         let sql = 'SELECT id, numero_junta FROM juntas WHERE parroquia=? AND zona=?';
         const params = [parroquia, zona];
         if (dignidad) { sql += ' AND (dignidad=? OR dignidad IS NULL)'; params.push(dignidad); }
+        const asignadas = await juntasAsignadasDeSesion(req);
+        if (asignadas !== null) {
+            if (asignadas.length === 0) return res.json([]);
+            sql += ` AND id IN (${asignadas.map(() => '?').join(',')})`;
+            params.push(...asignadas);
+        }
         sql += ' ORDER BY numero_junta ASC';
         const [rows] = await db.execute(sql, params);
         res.json(rows);
@@ -937,6 +1005,16 @@ app.post('/registrar-resultados', async (req, res) => {
 
     if (!junta_id || !id_veedor || !Array.isArray(votos) || votos.length === 0)
         return res.status(400).json({ success: false, message: 'Datos incompletos' });
+
+    const asignadas = await juntasAsignadasDeSesion(req);
+    if (asignadas !== null && !asignadas.includes(Number(junta_id))) {
+        return res.status(403).json({
+            success: false,
+            codigo: 'JUNTA_NO_ASIGNADA',
+            message: 'Esta junta no le fue asignada. Solo puede registrar resultados en sus juntas asignadas.'
+        });
+    }
+
 
     for (const v of votos) {
         const n = parseInt(v && v.votos, 10);
@@ -1240,6 +1318,79 @@ app.put('/juntas-correccion/:junta_id', requiereRol('admin', 'superadmin'), asyn
             );
         }
         res.json({ success: true, message: 'Acta corregida correctamente' });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// ── ASIGNACIÓN DE JUNTAS A VEEDORES ────────────────────────────────────
+// Listado para el panel: veedores con sus juntas asignadas + catálogo de juntas
+app.get('/asignaciones', requiereRol('admin', 'superadmin'), async (_, res) => {
+    try {
+        const [veedores] = await db.execute(
+            "SELECT id, cedula, usuario FROM usuarios WHERE rol='veedor' ORDER BY usuario ASC"
+        );
+        const [juntas] = await db.execute(
+            'SELECT id, parroquia, zona, numero_junta, dignidad FROM juntas ORDER BY parroquia, zona, numero_junta'
+        );
+        const [asig] = await db.execute('SELECT id_veedor, junta_id FROM asignaciones_juntas');
+        const mapa = new Map(veedores.map(v => [Number(v.id), []]));
+        asig.forEach(a => {
+            const lista = mapa.get(Number(a.id_veedor));
+            if (lista) lista.push(Number(a.junta_id));
+        });
+        res.json({
+            success: true,
+            veedores: veedores.map(v => ({ ...v, juntas: mapa.get(Number(v.id)) || [] })),
+            juntas
+        });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// Guardar las juntas asignadas a un veedor (reemplaza la asignación completa)
+app.put('/asignaciones/:id', requiereRol('admin', 'superadmin'), async (req, res) => {
+    const veedorId = parseInt(req.params.id, 10);
+    const { juntas } = req.body;
+    if (!Number.isInteger(veedorId))
+        return res.status(400).json({ success: false, message: 'Veedor inválido' });
+    if (!Array.isArray(juntas))
+        return res.status(400).json({ success: false, message: 'Debe enviar la lista de juntas (array)' });
+    const ids = [...new Set(juntas.map(n => parseInt(n, 10)).filter(n => Number.isInteger(n)))];
+    try {
+        const [u] = await db.execute(
+            "SELECT usuario FROM usuarios WHERE id=? AND rol='veedor'", [veedorId]
+        );
+        if (!u.length)
+            return res.status(404).json({ success: false, message: 'Veedor no encontrado' });
+
+        if (ids.length) {
+            const [exis] = await db.execute(
+                `SELECT id FROM juntas WHERE id IN (${ids.map(() => '?').join(',')})`, ids
+            );
+            if (exis.length !== ids.length)
+                return res.status(400).json({ success: false, message: 'Una o más juntas no existen' });
+        }
+
+        if (isPostgres || typeof db.getConnection !== 'function') {
+            await db.execute('DELETE FROM asignaciones_juntas WHERE id_veedor=?', [veedorId]);
+            for (const j of ids)
+                await db.execute('INSERT INTO asignaciones_juntas (id_veedor, junta_id) VALUES (?,?)', [veedorId, j]);
+        } else {
+            const conn = await db.getConnection();
+            try {
+                await conn.beginTransaction();
+                await conn.execute('DELETE FROM asignaciones_juntas WHERE id_veedor=?', [veedorId]);
+                for (const j of ids)
+                    await conn.execute('INSERT INTO asignaciones_juntas (id_veedor, junta_id) VALUES (?,?)', [veedorId, j]);
+                await conn.commit();
+            } catch (e) {
+                await conn.rollback().catch(() => {});
+                throw e;
+            } finally { conn.release(); }
+        }
+        res.json({
+            success: true,
+            message: `Asignación guardada: ${u[0].usuario} → ${ids.length} junta(s)`,
+            total: ids.length
+        });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
