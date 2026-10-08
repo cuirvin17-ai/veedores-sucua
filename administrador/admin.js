@@ -150,6 +150,9 @@ const DIGNIDADES_LIST = [
     { clave: 'JUNTAS_PARROQUIALES',  label: 'Juntas Parroquiales',     icono: 'fa-people-group' },
 ];
 
+// Set global de dignidades habilitadas (se actualiza en aplicarFiltrosDignidades)
+let dignidadesHabilitadasSet = null;
+
 async function aplicarFiltrosDignidades() {
     let habilitadas;
     try {
@@ -158,6 +161,7 @@ async function aplicarFiltrosDignidades() {
         if (!data.success || !Array.isArray(data.dignidades)) return;
         habilitadas = new Set(data.dignidades.filter(d => Number(d.habilitada) === 1).map(d => d.clave));
     } catch (e) { return; }
+    dignidadesHabilitadasSet = habilitadas;
 
     const LABELS = {
         ALCALDE: 'Alcalde',
@@ -1300,6 +1304,7 @@ function juntaEtiqueta(j) {
 
 function cargarOpcionesFiltrosAsign() {
     const dignidades = [...new Set(asignJuntas.map(j => j.dignidad).filter(Boolean))]
+        .filter(d => !dignidadesHabilitadasSet || dignidadesHabilitadasSet.has(d))
         .sort((a, b) => (DIG_NOMBRES[a] || a).localeCompare(DIG_NOMBRES[b] || b));
     const parroquias = [...new Set(asignJuntas.map(j => j.parroquia))].sort();
     const zonas      = [...new Set(asignJuntas.map(j => j.zona))].sort();
