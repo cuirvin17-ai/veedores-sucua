@@ -1613,3 +1613,56 @@ body {
 .switch input:checked + .slider { background: #8b5cf6; }
 .switch input:checked + .slider:before { transform: translateX(20px); }
 .switch input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
+
+/* -- CORRECCIÓN DE JUNTAS --------------------------------- */
+.correccion-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 440px) 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.correccion-foto {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    cursor: zoom-in;
+    display: block;
+    background: #f1f5f9;
+}
+
+.correccion-foto-sin {
+    text-align: center;
+    padding: 48px 16px;
+    color: #94a3b8;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.correccion-foto-sin i {
+    font-size: 2.4rem;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.votos-input {
+    width: 110px;
+    padding: 8px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    text-align: right;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.votos-input:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+@media (max-width: 900px) {
+    .correccion-grid { grid-template-columns: 1fr; }
+    .votos-input { width: 90px; }
+}

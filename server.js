@@ -445,7 +445,7 @@ const rutasProtegidas = [
     '/estadisticas-junta', '/juntas-pendientes', '/descargar-excel',
     '/descargar-fotos-actas', '/parroquias-disponibles', '/zonas-disponibles',
     '/subir-foto', '/registrar-resultados', '/resultados', '/junta-registrada',
-    '/admin'
+    '/juntas-correccion', '/admin'
 ];
 app.use(rutasProtegidas, autenticarSesion);
 
@@ -456,7 +456,7 @@ const apiNoStore = [
     '/estadisticas-resumen', '/estadisticas-junta', '/juntas-pendientes',
     '/descargar-excel', '/descargar-fotos-actas',
     '/candidatos', '/todas-fotos', '/foto-acta', '/subir-foto',
-    '/registrar-resultados', '/resultados',
+    '/registrar-resultados', '/resultados', '/juntas-correccion',
     '/parroquias-disponibles', '/zonas-disponibles', '/junta-registrada'
 ];
 app.use(apiNoStore, noStore);
@@ -1115,6 +1115,118 @@ app.get('/parroquias-disponibles', async (_, res) => {
         const [rows] = await db.execute('SELECT DISTINCT parroquia FROM juntas ORDER BY parroquia ASC');
         res.json(rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── CORRECCIÓN DE JUNTAS (superadmin) ─────────────────────────────────
+
+// Lista de juntas con acta ingresada (una fila por junta+dignidad con resultados)
+app.get('/juntas-correccion', requiereRol('superadmin'), async (req, res) => {
+    const { parroquia, zona, dignidad } = req.query;
+    const dig = dignidad || 'ALCALDE';
+    if (!DIGNIDADES_CONFIG.includes(dig))
+        return res.status(400).json({ success: false, message: 'Dignidad inválida' });
+    try {
+        let where = 'WHERE r.dignidad=?';
+        const params = [dig];
+        if (parroquia && parroquia !== 'todas') { where += ' AND j.parroquia=?'; params.push(parroquia); }
+        if (zona && zona !== 'todas')           { where += ' AND j.zona=?';      params.push(zona); }
+        const [rows] = await db.execute(
+            `SELECT j.id AS junta_id, j.parroquia, j.zona, j.numero_junta,
+                    r.dignidad, SUM(r.votos) AS total_votos,
+                    MAX(u.usuario) AS veedor, MAX(r.fecha_registro) AS fecha,
+                    f.foto
+             FROM resultados r
+             JOIN juntas j ON r.junta_id = j.id
+             LEFT JOIN usuarios u ON r.id_veedor = u.id
+             LEFT JOIN fotos_actas f ON f.junta_id = j.id
+             ${where}
+             GROUP BY j.id, j.parroquia, j.zona, j.numero_junta, r.dignidad, f.foto
+             ORDER BY j.parroquia, j.zona, j.numero_junta`, params
+        );
+        res.json({ success: true, juntas: rows });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// Detalle de un acta: foto + valores ingresados + candidatos activos
+app.get('/juntas-correccion/:junta_id', requiereRol('superadmin'), async (req, res) => {
+    const { junta_id } = req.params;
+    const dig = req.query.dignidad || 'ALCALDE';
+    if (!DIGNIDADES_CONFIG.includes(dig))
+        return res.status(400).json({ success: false, message: 'Dignidad inválida' });
+    try {
+        const [jRows] = await db.execute(
+            'SELECT id, parroquia, zona, numero_junta FROM juntas WHERE id=?', [junta_id]
+        );
+        if (!jRows.length) return res.status(404).json({ success: false, message: 'Junta no encontrada' });
+
+        const [filas] = await db.execute(
+            `SELECT r.candidato, r.votos, r.id_veedor, r.fecha_registro, u.usuario AS veedor
+             FROM resultados r
+             LEFT JOIN usuarios u ON r.id_veedor = u.id
+             WHERE r.junta_id=? AND r.dignidad=?
+             ORDER BY r.votos DESC, r.candidato ASC`, [junta_id, dig]
+        );
+
+        const [cats] = await db.execute(
+            'SELECT nombre FROM candidatos WHERE dignidad=? ORDER BY orden, nombre', [dig]
+        );
+
+        const [fotoRows] = await db.execute(
+            `SELECT f.foto, f.fecha_subida, u.usuario AS veedor
+             FROM fotos_actas f
+             LEFT JOIN usuarios u ON f.id_veedor = u.id
+             WHERE f.junta_id=?`, [junta_id]
+        );
+
+        res.json({
+            success: true,
+            junta: jRows[0],
+            filas,
+            candidatos: cats.map(c => c.nombre),
+            foto: fotoRows.length
+                ? { ...fotoRows[0], url: `/veedores_sucua/uploads/${fotoRows[0].foto}` }
+                : null
+        });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// Corregir los votos de un acta (reemplaza las filas de la junta+dignidad)
+app.put('/juntas-correccion/:junta_id', requiereRol('superadmin'), async (req, res) => {
+    const { junta_id } = req.params;
+    const { dignidad, votos } = req.body;
+    const dig = dignidad || 'ALCALDE';
+    if (!DIGNIDADES_CONFIG.includes(dig))
+        return res.status(400).json({ success: false, message: 'Dignidad inválida' });
+    if (!Array.isArray(votos) || votos.length === 0)
+        return res.status(400).json({ success: false, message: 'Debe enviar al menos un candidato (votos)' });
+    for (const item of votos) {
+        if (!item || typeof item.candidato !== 'string' || !item.candidato.trim() || item.candidato.trim().length > 150)
+            return res.status(400).json({ success: false, message: 'Candidato inválido' });
+        const v = parseInt(item.votos);
+        if (isNaN(v) || v < 0)
+            return res.status(400).json({ success: false, message: 'Votos inválidos' });
+    }
+    try {
+        const [jRows] = await db.execute('SELECT id FROM juntas WHERE id=?', [junta_id]);
+        if (!jRows.length) return res.status(404).json({ success: false, message: 'Junta no encontrada' });
+
+        const [prev] = await db.execute(
+            'SELECT id_veedor FROM resultados WHERE junta_id=? AND dignidad=? LIMIT 1',
+            [junta_id, dig]
+        );
+        const idVeedor = prev.length ? prev[0].id_veedor : null;
+
+        await db.execute('DELETE FROM resultados WHERE junta_id=? AND dignidad=?', [junta_id, dig]);
+        for (const item of votos) {
+            await db.execute(
+                `INSERT INTO resultados (junta_id, dignidad, candidato, votos, id_veedor)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE votos=VALUES(votos)`,
+                [junta_id, dig, item.candidato.trim(), Math.max(0, parseInt(item.votos)), idVeedor]
+            );
+        }
+        res.json({ success: true, message: 'Acta corregida correctamente' });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 app.get('/zonas-disponibles', async (req, res) => {

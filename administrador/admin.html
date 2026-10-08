@@ -52,6 +52,11 @@
                onclick="mostrarSeccion('juntas')" class="menu-item">
                 <i class="fas fa-ballot-check"></i> <span>Estado de Juntas</span>
             </a>
+            <a href="javascript:void(0)" id="menuCorreccion"
+               onclick="mostrarSeccion('correccion')" class="menu-item"
+               style="display:none;">
+                <i class="fas fa-file-pen"></i> <span>Corrección de Juntas</span>
+            </a>
             <a href="javascript:void(0)" id="menuActas"
                onclick="mostrarSeccion('actas')" class="menu-item">
                 <i class="fas fa-camera"></i> <span>Fotos de Actas</span>
@@ -280,6 +285,70 @@
                 <div class="stats-card juntas-card-pend">
                     <h3><i class="fas fa-circle-exclamation"></i> Juntas Pendientes</h3>
                     <div id="listaJuntasPendientes" class="junta-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CORRECCIÓN DE JUNTAS -->
+        <div id="seccionCorreccion" class="seccion-panel">
+            <header class="page-header">
+                <div>
+                    <h1>Corrección de Juntas</h1>
+                    <p class="header-sub">Revisa la foto del acta y corrige los valores ingresados</p>
+                </div>
+                <button onclick="cargarCorreccionJuntas()" class="btn-refresh">
+                    <i class="fas fa-sync"></i> Actualizar
+                </button>
+            </header>
+
+            <div class="stats-card">
+                <h3 style="margin-bottom:16px;"><i class="fas fa-list-check"></i> Juntas con acta ingresada</h3>
+                <div style="overflow-x:auto;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Junta</th><th>Parroquia</th><th>Zona</th>
+                                <th>Dignidad</th><th>Votos</th><th>Veedor</th><th>Foto</th><th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaCorreccion">
+                            <tr><td colspan="8" style="text-align:center;color:#94a3b8;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="panelCorreccionDetalle" class="stats-card" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+                    <h3 id="tituloCorreccion" style="margin:0;"><i class="fas fa-file-pen"></i> Corregir acta</h3>
+                    <button onclick="cerrarCorreccion()" class="btn-refresh">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                </div>
+                <div class="correccion-grid">
+                    <div>
+                        <div id="correccionFotoWrap"></div>
+                        <div id="correccionMeta" style="margin-top:10px;font-size:0.85rem;color:#64748b;"></div>
+                    </div>
+                    <div>
+                        <table class="custom-table">
+                            <thead>
+                                <tr><th>Candidato</th><th style="text-align:right;">Votos</th></tr>
+                            </thead>
+                            <tbody id="tablaCorreccionForm"></tbody>
+                            <tfoot>
+                                <tr>
+                                    <td style="font-weight:800;">TOTAL</td>
+                                    <td style="text-align:right;font-weight:800;" id="correccionTotal">0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <div style="display:flex;gap:10px;margin-top:16px;">
+                            <button id="btnGuardarCorreccion" onclick="guardarCorreccion()" class="btn-agregar">
+                                <i class="fas fa-save"></i> Guardar corrección
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

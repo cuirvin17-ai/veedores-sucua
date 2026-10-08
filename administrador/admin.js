@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rol === 'superadmin') {
         document.getElementById('menuCandidatos').style.display = 'flex';
         document.getElementById('menuConfiguracion').style.display = 'flex';
+        document.getElementById('menuCorreccion').style.display = 'flex';
     }
     }
 });
@@ -298,6 +299,7 @@ function mostrarSeccion(nombre) {
 
     if (nombre === 'resultados')   cargarTodo();
     if (nombre === 'juntas')       cargarEstadoJuntas();
+    if (nombre === 'correccion')   { if (esSuperadmin()) cargarCorreccionJuntas(); }
     if (nombre === 'actas')        cargarFotos();
     if (nombre === 'candidatos')   { if (esSuperadmin()) cargarCandidatosAdmin(); }
     if (nombre === 'configuracion') { if (esSuperadmin()) { cargarJuntasConfig(); cargarDatalists(); } }
@@ -325,6 +327,7 @@ function refrescarSeccionActiva() {
         const id = activa.id;
         if (id === 'seccionResultados') cargarTodo();
         else if (id === 'seccionJuntas') cargarEstadoJuntas();
+        else if (id === 'seccionCorreccion') cargarCorreccionJuntas();
         else if (id === 'seccionActas') cargarFotos();
     }
 }
@@ -1070,5 +1073,170 @@ async function eliminarResultados(juntaId, nombre) {
         }
     } catch (e) {
         alert(' Error de conexión al eliminar resultados.');
+    }
+}
+
+// ── CORRECCIÓN DE JUNTAS (superadmin) ─────────────────────────────────
+const DIG_NOMBRES = {
+    ALCALDE: 'Alcalde',
+    CONCEJALES_URBANOS: 'Concejales Urbanos',
+    CONCEJALES_RURALES: 'Concejales Rurales',
+    JUNTAS_PARROQUIALES: 'Juntas Parroquiales'
+};
+let correccionActual = null;
+
+function escAtr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+async function cargarCorreccionJuntas() {
+    const tbody = document.getElementById('tablaCorreccion');
+    if (!tbody || !esSuperadmin()) return;
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">'
+        + '<i class="fas fa-circle-notch fa-spin"></i> Cargando...</td></tr>';
+    cerrarCorreccion();
+
+    try {
+        const { parroquia, zona, dignidad } = getFiltros();
+        const qs = `parroquia=${encodeURIComponent(parroquia)}&zona=${encodeURIComponent(zona)}&dignidad=${encodeURIComponent(dignidad)}`;
+        const res = await fetch(`${API}/juntas-correccion?${qs}`, { headers: getHeaders() });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'No se pudo cargar');
+
+        tbody.innerHTML = data.juntas.length === 0
+            ? '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">Sin juntas con acta para este filtro</td></tr>'
+            : data.juntas.map(j => `
+    <tr>
+        <td style="font-weight:700;">${j.numero_junta}</td>
+        <td>${j.parroquia}</td>
+        <td>${j.zona}</td>
+        <td>${DIG_NOMBRES[j.dignidad] || j.dignidad}</td>
+        <td style="font-weight:700;">${Number(j.total_votos) || 0}</td>
+        <td>${j.veedor || '—'}</td>
+        <td style="text-align:center;">${j.foto
+            ? '<i class="fas fa-camera" style="color:#2563eb;" title="Con foto"></i>'
+            : '<i class="fas fa-camera" style="color:#cbd5e1;" title="Sin foto"></i>'}</td>
+        <td><button class="btn-agregar" onclick="abrirCorreccion(${j.junta_id}, '${j.dignidad}')">
+                <i class="fas fa-file-pen"></i> Revisar
+            </button></td>
+    </tr>`).join('');
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ef4444;">'
+            + 'Error al cargar: ' + escAtr(e.message) + '</td></tr>';
+    }
+}
+
+async function abrirCorreccion(juntaId, dignidad) {
+    try {
+        const res = await fetch(
+            `${API}/juntas-correccion/${juntaId}?dignidad=${encodeURIComponent(dignidad)}`,
+            { headers: getHeaders() }
+        );
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'No se pudo cargar el acta');
+
+        correccionActual = {
+            junta_id: juntaId,
+            dignidad,
+            totalAnterior: data.filas.reduce((a, f) => a + (Number(f.votos) || 0), 0)
+        };
+
+        const wrap = document.getElementById('correccionFotoWrap');
+        if (data.foto && data.foto.url) {
+            wrap.innerHTML = `<img class="correccion-foto" src="${escAtr(data.foto.url)}?v=${Date.now()}"
+                alt="Foto del acta" title="Clic para ver en tamaño completo"
+                onclick="window.open(this.src, '_blank')">`;
+            document.getElementById('correccionMeta').innerHTML =
+                `Foto subida por <b>${escAtr(data.foto.veedor || '—')}</b> el ${data.foto.fecha_subida || ''}`;
+        } else {
+            wrap.innerHTML = `<div class="correccion-foto-sin"><i class="fas fa-camera"></i>Sin foto del acta</div>`;
+            document.getElementById('correccionMeta').textContent =
+                'Esta junta no tiene foto del acta registrada.';
+        }
+
+        const j = data.junta;
+        document.getElementById('tituloCorreccion').innerHTML =
+            `<i class="fas fa-file-pen"></i> ${j.parroquia} · ${j.zona} · Junta ${j.numero_junta} — ${DIG_NOMBRES[dignidad] || dignidad}`;
+
+        const existentes = new Map(data.filas.map(f => [f.candidato, f]));
+        const nombres = [];
+        (data.candidatos || []).forEach(n => nombres.push(n));
+        ['NULO', 'BLANCO'].forEach(n => { if (!nombres.includes(n)) nombres.push(n); });
+        existentes.forEach((v, n) => { if (!nombres.includes(n)) nombres.push(n); });
+
+        document.getElementById('tablaCorreccionForm').innerHTML = nombres.map(n => {
+            const val = existentes.get(n);
+            const etiqueta = n === 'NULO' ? '<b style="color:#dc2626;">Voto Nulo</b>'
+                          : n === 'BLANCO' ? '<b style="color:#64748b;">Voto Blanco</b>'
+                          : escAtr(n);
+            return `
+    <tr>
+        <td>${etiqueta}</td>
+        <td style="text-align:right;">
+            <input type="number" class="votos-input" min="0" step="1"
+                   data-candidato="${escAtr(n)}"
+                   value="${val ? Math.max(0, Number(val.votos) || 0) : 0}"
+                   oninput="actualizarTotalCorreccion()">
+        </td>
+    </tr>`;
+        }).join('');
+
+        actualizarTotalCorreccion();
+        const panel = document.getElementById('panelCorreccionDetalle');
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) {
+        alert('❌ No se pudo abrir el acta: ' + e.message);
+    }
+}
+
+function actualizarTotalCorreccion() {
+    let t = 0;
+    document.querySelectorAll('#tablaCorreccionForm .votos-input').forEach(i => {
+        t += Math.max(0, parseInt(i.value, 10) || 0);
+    });
+    const el = document.getElementById('correccionTotal');
+    if (el) el.textContent = t;
+}
+
+function cerrarCorreccion() {
+    const panel = document.getElementById('panelCorreccionDetalle');
+    if (panel) panel.style.display = 'none';
+    correccionActual = null;
+}
+
+async function guardarCorreccion() {
+    if (!correccionActual) return;
+
+    const votos = [];
+    document.querySelectorAll('#tablaCorreccionForm .votos-input').forEach(i => {
+        votos.push({
+            candidato: i.dataset.candidato,
+            votos: Math.max(0, parseInt(i.value, 10) || 0)
+        });
+    });
+    if (votos.length === 0) return;
+
+    const nuevoTotal = votos.reduce((a, v) => a + v.votos, 0);
+    if (!confirm(`¿Guardar la corrección del acta?\n\nTotal anterior: ${correccionActual.totalAnterior} votos\nTotal nuevo: ${nuevoTotal} votos`)) return;
+
+    const btn = document.getElementById('btnGuardarCorreccion');
+    btn.disabled = true;
+    try {
+        const res = await fetch(`${API}/juntas-correccion/${correccionActual.junta_id}`, {
+            method: 'PUT',
+            headers: getHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ dignidad: correccionActual.dignidad, votos })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'No se pudo guardar');
+
+        alert('✅ ' + (data.message || 'Acta corregida correctamente'));
+        await cargarCorreccionJuntas();
+        await abrirCorreccion(correccionActual.junta_id, correccionActual.dignidad);
+    } catch (e) {
+        alert('❌ ' + e.message);
+    } finally {
+        btn.disabled = false;
     }
 }

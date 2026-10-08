@@ -1,4 +1,4 @@
-const CACHE = 'veedores-sucua-2026-v7';
+const CACHE = 'veedores-sucua-2026-v8';
 
 const ARCHIVOS_ESTATICOS = [
     '/veedores_sucua/vendor/fontawesome/css/all.min.css',
@@ -86,8 +86,10 @@ self.addEventListener('fetch', event => {
         .some(p => url.pathname.startsWith(p))) {
         event.respondWith(
             fetchConHeader(event.request).then(response => {
-                const clone = response.clone();
-                caches.open(CACHE).then(c => c.put(event.request, clone));
+                if (event.request.method === 'GET') {
+                    const clone = response.clone();
+                    caches.open(CACHE).then(c => c.put(event.request, clone)).catch(() => {});
+                }
                 return response;
             }).catch(() => caches.match(event.request))
         );
