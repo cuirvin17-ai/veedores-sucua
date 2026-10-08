@@ -767,8 +767,13 @@ app.post('/candidatos', requiereRol('superadmin'), async (req, res) => {
 
 app.delete('/candidatos/:id', requiereRol('superadmin'), async (req, res) => {
     try {
+        const [candRows] = await db.execute('SELECT nombre, dignidad FROM candidatos WHERE id=?', [req.params.id]);
+        if (candRows.length === 0)
+            return res.status(404).json({ success: false, message: 'Candidato no encontrado' });
+
         await db.execute('DELETE FROM candidatos WHERE id=?', [req.params.id]);
-        res.json({ success: true });
+        const [del] = await db.execute('DELETE FROM resultados WHERE candidato=? AND dignidad=?', [candRows[0].nombre, candRows[0].dignidad]);
+        res.json({ success: true, votosEliminados: del.affectedRows || 0 });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
@@ -943,7 +948,16 @@ app.post('/registrar-resultados', async (req, res) => {
             await db.execute('DELETE FROM resultados WHERE junta_id=? AND dignidad=?', [junta_id, dig]);
         }
 
-        for (const item of votos) {
+        const [cats] = await db.execute('SELECT nombre FROM candidatos WHERE dignidad=?', [dig]);
+        const validos = new Set(cats.map(c => c.nombre));
+        const votosLimpios = votos.filter(v =>
+            v.candidato === 'NULO' || v.candidato === 'BLANCO' || validos.has(v.candidato)
+        );
+        if (votosLimpios.length < votos.length) {
+            console.log(`⚠️ Junta ${junta_id} ${dig}: se omitieron ${votos.length - votosLimpios.length} voto(s) de candidatos eliminados`);
+        }
+
+        for (const item of votosLimpios) {
             await db.execute(
                 `INSERT INTO resultados (junta_id, dignidad, candidato, votos, id_veedor)
                  VALUES (?, ?, ?, ?, ?)
