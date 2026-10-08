@@ -5,7 +5,7 @@ function getHeaders(extra = {}) {
     return { 'ngrok-skip-browser-warning': 'true', ...extra, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
-const REFRESH_INTERVAL_MS = 30000;
+const REFRESH_INTERVAL_MS = 10000;
 
 document.addEventListener('DOMContentLoaded', () => {
     const nombre = localStorage.getItem('nombreUsuarioActivo') || 'Admin';
