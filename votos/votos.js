@@ -217,7 +217,10 @@ function ajustar(key, delta) {
 function actualizarTotal() {
     let total = 0;
     document.querySelectorAll('.voto-input').forEach(inp => {
-        total += parseInt(inp.value) || 0;
+        let v = parseInt(inp.value, 10);
+        if (isNaN(v)) v = 0;
+        else if (v < 0) { v = 0; inp.value = '0'; }
+        total += v;
     });
     document.getElementById('totalVotos').textContent = total;
 }
@@ -273,7 +276,7 @@ async function guardarResultados() {
     const votos  = [];
     inputs.forEach(inp => {
         const candidato = inp.dataset.candidato;
-        if (candidato) votos.push({ candidato, votos: parseInt(inp.value) || 0 });
+        if (candidato) votos.push({ candidato, votos: Math.max(0, parseInt(inp.value, 10) || 0) });
     });
 
     if (!votos.length) { mostrarError('No hay datos para guardar.'); return; }

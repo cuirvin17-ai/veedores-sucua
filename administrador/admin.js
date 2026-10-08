@@ -1195,7 +1195,10 @@ async function abrirCorreccion(juntaId, dignidad) {
 function actualizarTotalCorreccion() {
     let t = 0;
     document.querySelectorAll('#tablaCorreccionForm .votos-input').forEach(i => {
-        t += Math.max(0, parseInt(i.value, 10) || 0);
+        let v = parseInt(i.value, 10);
+        if (isNaN(v)) v = 0;
+        else if (v < 0) { v = 0; i.value = '0'; }
+        t += v;
     });
     const el = document.getElementById('correccionTotal');
     if (el) el.textContent = t;

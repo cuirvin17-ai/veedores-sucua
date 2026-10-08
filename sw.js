@@ -1,4 +1,4 @@
-const CACHE = 'veedores-sucua-2026-v13';
+const CACHE = 'veedores-sucua-2026-v14';
 
 const ARCHIVOS_ESTATICOS = [
     '/veedores_sucua/vendor/fontawesome/css/all.min.css',

@@ -57,10 +57,17 @@
         for (const item of cola) {
             if (detener) { pendientes.push(item); continue; }
             try {
+                const payload = {
+                    ...item,
+                    votos: (item.votos || []).map(v => ({
+                        candidato: v.candidato,
+                        votos: Math.max(0, parseInt(v.votos, 10) || 0)
+                    }))
+                };
                 const res = await fetch(`${API}/registrar-resultados`, {
                     method: 'POST',
                     headers: headersSync({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify(item)
+                    body: JSON.stringify(payload)
                 });
 
                 if (res.status === 401) {

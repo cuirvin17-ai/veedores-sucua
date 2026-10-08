@@ -938,6 +938,15 @@ app.post('/registrar-resultados', async (req, res) => {
     if (!junta_id || !id_veedor || !Array.isArray(votos) || votos.length === 0)
         return res.status(400).json({ success: false, message: 'Datos incompletos' });
 
+    for (const v of votos) {
+        const n = parseInt(v && v.votos, 10);
+        if (isNaN(n) || n < 0)
+            return res.status(400).json({
+                success: false,
+                message: `Votos inválidos para "${v && v.candidato ? v.candidato : '?'}": deben ser números positivos`
+            });
+    }
+
     try {
         const [existe] = await db.execute(
             'SELECT id FROM resultados WHERE junta_id=? AND dignidad=? LIMIT 1', [junta_id, dig]
