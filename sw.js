@@ -1,4 +1,4 @@
-const CACHE = 'veedores-sucua-2026-v6';
+const CACHE = 'veedores-sucua-2026-v7';
 
 const ARCHIVOS_ESTATICOS = [
     '/veedores_sucua/vendor/fontawesome/css/all.min.css',
@@ -80,7 +80,10 @@ self.addEventListener('fetch', event => {
     }
 
     if (['/parroquias', '/zonas', '/juntas', '/candidatos', '/dignidades-estado',
-         '/parroquias-disponibles', '/zonas-disponibles'].some(p => url.pathname.startsWith(p))) {
+         '/parroquias-disponibles', '/zonas-disponibles', '/estadisticas',
+         '/estado-acceso', '/usuarios', '/resultados', '/junta-registrada',
+         '/todas-fotos', '/foto-acta', '/descargar-excel', '/descargar-fotos-actas']
+        .some(p => url.pathname.startsWith(p))) {
         event.respondWith(
             fetchConHeader(event.request).then(response => {
                 const clone = response.clone();
