@@ -63,25 +63,7 @@ function actualizarBadgePendientes() {
     badge.style.display = 'block';
 }
 
-window.addEventListener('online', async () => {
-    checkConexion();
-    const votosSync = await sincronizarVotos();
-    const fotosSync = await sincronizarFotos();
-    actualizarBadgePendientes();
-
-    const totalSync = (votosSync || 0) + (fotosSync || 0);
-    if (totalSync > 0) {
-        const sync = document.getElementById('avisoSync');
-        if (sync) {
-            const partes = [];
-            if (votosSync > 0) partes.push(`${votosSync} acta(s)`);
-            if (fotosSync > 0) partes.push(`${fotosSync} foto(s)`);
-            sync.textContent = ` Actas pendientes enviadas: ${partes.join(' y ')}.`;
-            sync.style.display = 'block';
-            setTimeout(() => { sync.style.display = 'none'; }, 6000);
-        }
-    }
-});
+window.addEventListener('online', () => setTimeout(checkConexion, 500));
 window.addEventListener('offline', () => setTimeout(checkConexion, 500));
 
 async function verificarBloqueoSesion() {
@@ -122,7 +104,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     checkConexion();
     actualizarBadgePendientes();
     await cargarParroquias();
-    if (navigator.onLine) sincronizarColaVotos();
+    if (typeof intentarSincronizar === 'function') intentarSincronizar();
 });
 
 function guardarCache(clave, datos) {
@@ -298,90 +280,6 @@ async function onJuntaChange() {
     } catch (e) {
         console.error('Error verificando junta:', e);
     }
-}
-
-async function sincronizarColaVotos() {
-    await sincronizarVotos();
-    await sincronizarFotos();
-}
-
-async function sincronizarVotos() {
-    const cola = JSON.parse(localStorage.getItem('cola_votos') || '[]');
-    if (!cola.length) return 0;
-
-    const pendientes = [];
-    for (const item of cola) {
-        try {
-            const res  = await fetch(`${API}/registrar-resultados`, {
-                method: 'POST',
-                headers: getHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify(item)
-            });
-            const data = await res.json();
-            if (data.codigo === 'ACCESO_BLOQUEADO') {
-                localStorage.setItem('sistemaAccesoBloqueado', '1');
-                alert(' El sistema está bloqueado. No se pueden sincronizar actas.');
-                pendientes.push(item);
-                break;
-            }
-            if (data.success || data.message?.includes('ya fue registrada')) {
-                console.log(` Votos junta ${item.junta_id} sincronizados.`);
-            } else {
-                pendientes.push(item);
-            }
-        } catch (e) {
-            pendientes.push(item);
-        }
-    }
-
-    localStorage.setItem('cola_votos', JSON.stringify(pendientes));
-    return cola.length - pendientes.length;
-}
-
-async function sincronizarFotos() {
-    const cola = JSON.parse(localStorage.getItem('cola_fotos') || '[]');
-    if (!cola.length) return 0;
-
-    const pendientes = [];
-    for (const item of cola) {
-        try {
-            const res     = await fetch(item.base64);
-            const blob    = await res.blob();
-            const ext     = item.nombre?.split('.').pop() || 'jpg';
-            const archivo = new File([blob], `acta_${item.junta_id}.${ext}`, { type: blob.type });
-
-            const formData = new FormData();
-            formData.append('foto',      archivo);
-            formData.append('junta_id',  item.junta_id);
-            formData.append('id_veedor', item.id_veedor);
-
-            const resFoto  = await fetch(`${API}/subir-foto`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: formData
-            });
-            const dataFoto = await resFoto.json();
-
-            if (dataFoto.codigo === 'ACCESO_BLOQUEADO') {
-                localStorage.setItem('sistemaAccesoBloqueado', '1');
-                alert(' El sistema está bloqueado. No se pueden subir fotos.');
-                pendientes.push(item);
-                break;
-            }
-
-            if (dataFoto.success) {
-                console.log(` Foto junta ${item.junta_id} subida.`);
-            } else {
-                pendientes.push(item);
-            }
-        } catch (e) {
-            console.error(` Error foto junta ${item.junta_id}:`, e.message);
-            pendientes.push(item);
-        }
-    }
-
-    localStorage.setItem('cola_fotos', JSON.stringify(pendientes));
-    return cola.length - pendientes.length;
 }
 
 function continuar() {

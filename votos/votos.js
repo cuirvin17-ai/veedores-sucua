@@ -125,8 +125,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     actualizarBadgePendientes();
     await cargarCandidatos();
     await verificarFotoExistente();
-    if (navigator.onLine) {
-        await sincronizarColaVotos();
+    if (navigator.onLine && typeof intentarSincronizar === 'function') {
+        await intentarSincronizar();
         actualizarBadgePendientes();
     }
 });
@@ -306,6 +306,7 @@ async function guardarResultados() {
                 const fotasCola = JSON.parse(localStorage.getItem('cola_fotos') || '[]');
                 fotasCola.push({ junta_id: juntaId, id_veedor: idVeedor, base64: e.target.result, nombre: archivoFoto.name });
                 localStorage.setItem('cola_fotos', JSON.stringify(fotasCola));
+                actualizarBadgePendientes();
             };
             reader.readAsDataURL(archivoFoto);
         }

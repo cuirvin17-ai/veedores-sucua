@@ -1,4 +1,4 @@
-const CACHE = 'veedores-sucua-2026-v11';
+const CACHE = 'veedores-sucua-2026-v12';
 
 const ARCHIVOS_ESTATICOS = [
     '/veedores_sucua/vendor/fontawesome/css/all.min.css',
@@ -24,6 +24,7 @@ const ARCHIVOS_ESTATICOS = [
     '/veedores_sucua/administrador/admin.css',
     '/veedores_sucua/administrador/admin.js',
     '/veedores_sucua/registro/registro.html',
+    '/veedores_sucua/js/sync-offline.js',
     '/veedores_sucua/manifest.json',
     '/veedores_sucua/icon-192.png',
     '/veedores_sucua/icon-512.png'
